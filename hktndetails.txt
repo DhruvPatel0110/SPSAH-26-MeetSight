@@ -1,0 +1,859 @@
+STOP PROMPTING. CODE SOLO AGENTS HACKATHON 2026
+Complete Hackathon Details
+Organizer: HiDevs
+Organized with: Lyzr × Qdrant × Omi
+Hosted/community ecosystem: AI House
+Official Hackathon Portal:
+https://app.hidevs.xyz/hackathons/stop-prompting-solo-agents-hackathon-2026
+
+============================================================
+1. HACKATHON OVERVIEW
+============================================================
+
+Title:
+Stop Prompting. Code Solo Agents
+
+Theme / Positioning:
+The Dawn of the Autonomous AI Builder
+
+Core idea:
+The hackathon challenges solo developers to move beyond isolated prompts and wrapper scripts and build connected, autonomous agentic systems.
+
+Participants are expected to build voice-first, memory-backed agentic workflows that can:
+- Act
+- Reason
+- Persist information
+- Operate in real time
+- Coordinate multiple specialized agents
+- Use persistent vector memory
+- Connect voice input to agent reasoning and execution
+
+The intended architecture combines:
+- Omi for real-time voice capture / ambient input
+- Qdrant for persistent vector memory and semantic retrieval
+- Lyzr for multi-agent orchestration, reasoning, and task execution
+
+============================================================
+2. EVENT DETAILS
+============================================================
+
+Organizer:
+HiDevs
+
+Technology / Ecosystem Partners:
+- Lyzr
+- Qdrant
+- Omi
+
+Mode:
+Virtual / Online participation
+(The portal may label the event category/mode as Offline while the venue is Virtual.)
+
+Venue:
+Virtual
+
+Participation:
+Individual / Solo
+
+Team Size:
+1 participant per entry
+
+Hackathon Duration:
+August 29, 2026 - October 15, 2026
+(See deadline note below.)
+
+Registration / Submission Portal:
+https://app.hidevs.xyz/hackathons/stop-prompting-solo-agents-hackathon-2026
+
+Prize Pool:
+₹20,000 total cash prize pool / cash bounties, plus developer-tier credits and direct ecosystem grant tracks.
+
+============================================================
+3. IMPORTANT DEADLINE NOTE
+============================================================
+
+HARD DEADLINE TO FOLLOW FOR THIS PROJECT:
+October 10, 2026
+
+This is the deadline supplied by the participant from the current HiDevs hackathon portal and should be treated as the working submission deadline for planning.
+
+IMPORTANT VERIFICATION:
+A public event listing currently shows October 13, 2026 at 11:59 PM IST as the submission deadline. Because the participant has specifically confirmed that the HiDevs portal shows October 10, 2026, the safer approach is to treat OCTOBER 10 as the hard internal deadline and submit before it.
+
+Do NOT plan around October 13.
+
+============================================================
+4. CORE HACKATHON IDEA
+============================================================
+
+The hackathon is built around the idea that traditional prompt-only applications and simple wrapper scripts have reached a ceiling.
+
+The expected next generation of AI software is:
+- Autonomous
+- Stateful
+- Agentic
+- Voice-enabled
+- Memory-backed
+- Multi-agent
+- Real-time
+- Capable of executing tasks rather than merely responding
+
+The project should demonstrate a complete execution loop rather than a static chatbot.
+
+Expected conceptual loop:
+
+Real-time Voice Input
+        |
+        v
+Agent / Orchestrator
+        |
+        +--------------------+
+        |                    |
+        v                    v
+Specialized Agents      Vector Memory
+        |                 (Qdrant)
+        +---------+----------+
+                  |
+                  v
+             Final Action /
+             Insight / Output
+
+============================================================
+5. WHY PARTICIPATE
+============================================================
+
+The hackathon emphasizes hands-on depth across the agentic production stack.
+
+Participants can gain experience with:
+
+1. Agentic Production Stack
+   - Omi real-time voice capture
+   - Qdrant persistent vector memory
+   - Lyzr multi-agent orchestration
+
+2. Stateful Autonomous Architecture
+   - Persistent memory
+   - DAG-based task delegation
+   - Cross-agent communication
+   - Shared state between agents
+
+3. Production-Grade AI Engineering
+   - Working software
+   - Clean repository
+   - Architecture documentation
+   - Observable agentic workflows
+   - Working end-to-end demo
+
+4. Proof of Work
+   The project should demonstrate that the participant can build and connect a complete AI ecosystem independently.
+
+============================================================
+6. HOW THIS HACKATHON IS DIFFERENT
+============================================================
+
+Code Over Slide Decks:
+Working software, clean repositories, and observable agentic workflows account for 60%+ of the final score.
+
+This means the project should prioritize:
+- Functional software
+- Working integrations
+- Agent execution
+- Real memory retrieval
+- Reliable workflows
+- Clean code
+- A clear repository
+
+Do not optimize primarily for a speculative pitch deck.
+
+Mandatory Architectural Integration:
+Every project must connect:
+- Real-time voice input
+- Vector retrieval
+- Orchestrated agent reasoning
+
+These components must form a unified execution loop.
+
+Production-Grade Problem Spaces:
+Projects should address tangible problems involving areas such as:
+- Privacy-first memory controls
+- Multi-agent state sharing
+- Real-time cognitive assistance
+- Autonomous workflows
+- Knowledge retrieval and execution
+
+============================================================
+7. MANDATORY CORE TECHNOLOGY STACK
+============================================================
+
+EVERY PROJECT MUST INTEGRATE ALL THREE:
+
+------------------------------------------------------------
+A. OMI
+------------------------------------------------------------
+
+Purpose:
+Real-time voice capture and ambient input.
+
+Role in the architecture:
+- Captures spoken user input
+- Provides the voice-first interaction layer
+- Feeds voice/transcription information into the agent workflow
+
+Key concept:
+The project should demonstrate a real voice-to-agent workflow rather than only text input.
+
+------------------------------------------------------------
+B. QDRANT
+------------------------------------------------------------
+
+Purpose:
+Persistent vector memory and semantic retrieval.
+
+Role in the architecture:
+- Stores embeddings / memories
+- Retrieves semantically relevant information
+- Enables persistent context across interactions
+- Supports historical/contextual recall
+- Can act as shared memory between agents
+
+Key concept:
+The application should demonstrate actual persistent memory rather than pretending to remember information inside a single prompt.
+
+------------------------------------------------------------
+C. LYZR
+------------------------------------------------------------
+
+Purpose:
+Multi-agent orchestration, reasoning and task execution.
+
+Role in the architecture:
+- Coordinates specialized agents
+- Delegates tasks
+- Connects agent outputs
+- Enables reasoning workflows
+- Supports agent/task orchestration
+
+Key concept:
+The application should demonstrate an observable multi-agent execution workflow.
+
+============================================================
+8. BUILD TRACKS / THEMES
+============================================================
+
+TRACK 1 — MEETING & LECTURE INTELLIGENCE
+
+Description:
+Build voice-to-insight systems that can process meetings or lectures and turn spoken information into useful structured intelligence.
+
+Potential capabilities:
+- Voice capture
+- Transcript processing
+- Semantic retrieval
+- Automated action-item extraction
+- Contextual Q&A about previous meetings
+- Historical meeting recall
+- Summarization
+- Follow-up generation
+
+Core idea:
+Ask questions about what was discussed previously and retrieve relevant context from persistent memory.
+
+------------------------------------------------------------
+
+TRACK 2 — COLLABORATIVE MULTI-AGENT WORKFLOWS
+
+Description:
+Build voice-triggered execution pipelines where specialized agents coordinate with one another using a shared vector-memory layer.
+
+Potential capabilities:
+- Voice command
+- Agent delegation
+- Specialized agents
+- Shared Qdrant memory
+- Cross-agent communication
+- Task decomposition
+- DAG-style execution
+- Automated actions
+
+Core idea:
+One spoken command can trigger multiple agents that collaborate to complete a task.
+
+------------------------------------------------------------
+
+TRACK 3 — PRIVACY-FIRST KNOWLEDGE SYSTEMS
+
+Description:
+Build secure and transparent memory architectures where users have granular control over what information is remembered and who/which agent can access it.
+
+Potential capabilities:
+- Local or semi-local memory
+- User-controlled visibility
+- Memory permissions
+- Transparent memory inspection
+- Memory deletion
+- Selective retrieval
+- Privacy controls
+
+Core idea:
+Persistent memory should not mean uncontrolled memory.
+
+------------------------------------------------------------
+
+TRACK 4 — ACCESSIBILITY & ADAPTIVE ASSISTANTS
+
+Description:
+Build voice-driven systems designed to make high-friction interfaces easier to use.
+
+Potential capabilities:
+- Voice-driven forms
+- Guided workflows
+- Structured output generation
+- Accessibility assistance
+- Voice commands for complex processes
+- Adaptive user interaction
+
+Core idea:
+Use voice and agents to reduce friction for users who struggle with traditional interfaces.
+
+------------------------------------------------------------
+
+TRACK 5 — CONTINUOUS HEALTH & HABIT TRACKING
+
+Description:
+Build frictionless voice-based systems for daily logging, trend detection and time-aware semantic retrieval.
+
+Potential capabilities:
+- Daily voice logs
+- Habit logging
+- Temporal trend detection
+- Historical retrieval
+- Time-series semantic retrieval
+- Personalized summaries
+- Longitudinal context
+
+Core idea:
+Allow users to naturally record information over time and later ask questions about their history.
+
+IMPORTANT:
+Any health-related project should be designed responsibly and should avoid unsupported medical claims.
+
+------------------------------------------------------------
+
+TRACK 6 — OPEN INNOVATION
+
+Description:
+Wildcard applications across broad domains.
+
+Suggested areas explicitly mentioned:
+- DevTools
+- Finance
+- Automated research
+- Gaming
+- Autonomous operations
+
+This track allows a project to apply the mandatory Omi + Qdrant + Lyzr architecture to another meaningful problem.
+
+============================================================
+9. PROJECT REQUIREMENTS
+============================================================
+
+A submission should demonstrate:
+
+1. Solo development
+2. Integration of Omi
+3. Integration of Qdrant
+4. Integration of Lyzr
+5. Real-time voice input
+6. Vector retrieval / persistent memory
+7. Agent orchestration
+8. A unified execution workflow
+9. Working software
+10. Observable agentic behavior
+11. Clean public repository
+12. Architecture documentation
+13. Working demo
+
+The strongest submissions should make the relationship between these components obvious.
+
+============================================================
+10. SUBMISSION CRITERIA
+============================================================
+
+The required submission package includes:
+
+------------------------------------------------------------
+A. PUBLIC GITHUB REPOSITORY
+------------------------------------------------------------
+
+The repository must be public.
+
+It should contain:
+- Clean source code
+- Setup instructions
+- Required configuration/environment instructions
+- A visual architecture diagram in README.md
+- Enough documentation to understand the system
+- A reproducible way to run the project
+
+Recommended README sections:
+- Project name
+- Problem
+- Solution
+- Features
+- Architecture
+- Agent topology
+- Omi integration
+- Lyzr integration
+- Qdrant integration
+- Setup
+- Environment variables
+- Running locally
+- Demo
+- Screenshots
+- Future improvements
+
+------------------------------------------------------------
+B. ARCHITECTURE DIAGRAM
+------------------------------------------------------------
+
+A visual architecture diagram must be included in README.md.
+
+The diagram should clearly show:
+- Omi
+- Voice/transcription flow
+- Lyzr/orchestrator
+- Specialized agents
+- Qdrant
+- Retrieval/memory flow
+- Final output/action
+
+------------------------------------------------------------
+C. DEMO VIDEO
+------------------------------------------------------------
+
+Maximum duration:
+5 minutes
+
+The demo must showcase the working:
+voice → memory → agent workflow.
+
+The video should ideally demonstrate:
+1. The problem
+2. The application
+3. Voice input through Omi
+4. Agent orchestration through Lyzr
+5. Persistent retrieval through Qdrant
+6. The resulting action/answer
+7. Why the architecture matters
+
+Keep the demo focused on working software.
+
+------------------------------------------------------------
+D. SUBMISSION PORTAL
+------------------------------------------------------------
+
+Submit through HiDevs:
+
+https://app.hidevs.xyz/hackathons/stop-prompting-solo-agents-hackathon-2026
+
+The submission should include the required GitHub repository and demo material through the portal.
+
+------------------------------------------------------------
+E. PPT REQUIREMENT
+------------------------------------------------------------
+
+No mandatory PPT requirement is listed in the official submission requirements available for this hackathon.
+
+The documented submission requirements focus on:
+- Public GitHub repository
+- Clean code
+- Setup instructions
+- Visual architecture diagram in README.md
+- Maximum 5-minute demo video
+- Submission through HiDevs
+
+Therefore, prioritize the working product, repository, README, architecture diagram and demo video over creating a presentation.
+
+============================================================
+11. EVALUATION / JUDGING
+============================================================
+
+The hackathon explicitly states that:
+- Working software
+- Clean repositories
+- Observable agentic workflows
+
+dictate 60%+ of the final score.
+
+Therefore, prioritize engineering quality over presentation polish.
+
+Important qualities to demonstrate:
+- End-to-end functionality
+- Correct Omi integration
+- Correct Qdrant memory usage
+- Correct Lyzr orchestration
+- Observable agent behavior
+- Persistent state
+- Useful real-world problem
+- Reliable execution
+- Clean architecture
+- Reproducible setup
+
+============================================================
+12. RESOURCES
+============================================================
+
+Participants receive / can access:
+- API keys
+- Integration guides
+- Starter kits
+- Technical documentation
+
+These resources are provided through the HiDevs platform / hackathon ecosystem.
+
+Participants should use the official resources for:
+- Omi integration
+- Qdrant integration
+- Lyzr integration
+- API access
+- Starter implementations
+
+============================================================
+13. WORKSHOPS
+============================================================
+
+Workshop:
+Build a Real-World AI Agent with Lyzr, Omi & Qdrant
+
+Workshop 1:
+October 3, 2026
+8:00 PM – 10:00 PM IST
+
+Workshop 2:
+October 10, 2026
+8:00 PM – 10:00 PM IST
+
+Workshop link:
+The workshop link is to be shared through the official WhatsApp group.
+
+IMPORTANT:
+Because the working submission deadline is being treated as October 10, participants should not depend on the October 10 workshop for essential implementation work unless the portal explicitly confirms the deadline timing/extension.
+
+============================================================
+14. RULES
+============================================================
+
+Team Size:
+Solo participants only.
+
+Allowed team size:
+1 person per entry.
+
+Communication:
+Official announcements, mentor queries and updates are communicated through the official WhatsApp group.
+
+Architecture:
+The three required technologies must be integrated:
+- Omi
+- Qdrant
+- Lyzr
+
+Project style:
+The submission should be a working software project, not only a concept or pitch.
+
+Open-source expectation:
+The event encourages / expects an open-source, production-ready system with architectural documentation and a working demo.
+
+============================================================
+15. PRIZES & PERKS
+============================================================
+
+Total Prize Pool:
+₹20,000
+
+Additional perks:
+- Developer tier credits
+- Direct ecosystem grant tracks
+- Certificates / recognition
+
+Publicly listed prize breakdown:
+1st Place:
+Omi device worth ₹15,000 + Certificate of Excellence
+
+2nd Place:
+₹3,000 + Certificate of Excellence
+
+3rd Place:
+₹2,000 + Certificate of Excellence
+
+============================================================
+16. EVENT TIMELINE
+============================================================
+
+Hackathon kickoff:
+August 31, 2026
+
+Participant-provided hard submission deadline:
+October 10, 2026
+
+Public event listing deadline:
+October 13, 2026 at 11:59 PM IST
+
+Winner announcement:
+October 15, 2026
+Public listing states 9:00 PM for the announcement.
+
+Planning rule:
+Use October 10 as the internal hard deadline unless the HiDevs portal explicitly changes or confirms another deadline.
+
+============================================================
+17. RECOMMENDED TECHNICAL ARCHITECTURE
+============================================================
+
+A minimal compliant architecture can look like:
+
+OMI
+  |
+  v
+Voice Input / Transcript
+  |
+  v
+Backend / API
+  |
+  v
+LYZR ORCHESTRATOR
+  |
+  +----------------------+
+  |          |           |
+  v          v           v
+Research   Analysis    Memory
+Agent      Agent       Agent
+  |          |           |
+  +----------+-----------+
+             |
+             v
+          QDRANT
+     Persistent Memory
+             |
+             v
+      Final Response /
+      Action / Insight
+
+This is an example architecture, not a mandatory implementation.
+
+============================================================
+18. RECOMMENDED MVP SCOPE
+============================================================
+
+To finish within a short hackathon window, avoid building a huge platform.
+
+A strong MVP should have:
+
+- One clear real-world problem
+- Omi voice input
+- Lyzr orchestration
+- 3–4 specialized agents maximum
+- Qdrant persistent memory
+- One excellent end-to-end workflow
+- Simple web UI
+- Working deployment if feasible
+- Clear architecture diagram
+- Strong demo video
+
+Avoid:
+- 10+ agents
+- unnecessary microservices
+- local LLM inference unless absolutely required
+- huge frontend
+- unnecessary databases
+- excessive features
+- complicated infrastructure
+
+============================================================
+19. CURRENT PROJECT PLANNING NOTES
+============================================================
+
+Potential project directions that fit the hackathon:
+
+A. Supply Chain / Autonomous Operations
+   - Voice-driven supply-chain intelligence
+   - Event research
+   - Risk analysis
+   - Historical event retrieval
+   - Multi-agent analysis
+
+B. Recruiter / Hiring Assistant
+   - Voice-driven candidate search
+   - Requirement extraction
+   - Candidate retrieval
+   - Candidate evaluation
+   - Persistent recruitment memory
+
+C. DevTools Agent
+   - Voice-triggered debugging
+   - Log analysis
+   - Historical incident retrieval
+   - Multi-agent diagnostics
+
+D. Automated Research Agent
+   - Voice research requests
+   - Source/research agents
+   - Persistent research memory
+   - Structured outputs
+
+E. Meeting / Lecture Intelligence
+   - Voice capture
+   - Summary
+   - Action items
+   - Historical meeting Q&A
+
+The final project must still satisfy the mandatory Omi + Qdrant + Lyzr integration.
+
+============================================================
+20. LOCAL MODEL / HARDWARE NOTES
+============================================================
+
+A local LLM is NOT inherently required by the hackathon description.
+
+A practical implementation can use cloud/API-based AI services while:
+- Omi handles voice capture
+- Lyzr handles orchestration
+- Qdrant handles vector memory
+- A remote LLM/API handles model inference
+
+This avoids requiring:
+- Local GPU
+- Ollama
+- Large model downloads
+- CUDA
+- Multi-GB model files
+
+Local models should only be introduced if required by the chosen architecture or if there is a specific reason to run inference locally.
+
+============================================================
+21. STORAGE / DEVELOPMENT NOTES
+============================================================
+
+The project itself should not require large local storage if cloud/API services are used.
+
+Expected local project footprint:
+- Source code: generally small
+- Python/Node dependencies: moderate
+- Frontend build/development files: moderate
+- No mandatory multi-GB local LLM model
+- Qdrant can be hosted remotely
+
+A lightweight API-first implementation should be comfortable on a normal development laptop.
+
+============================================================
+22. DEPLOYMENT OPTIONS
+============================================================
+
+Deployment is not described as a mandatory separate submission requirement, but a deployed demo can strengthen the submission.
+
+Possible architecture:
+- Frontend: Vercel or similar
+- Backend/API: Render or similar
+- Vector database: Qdrant Cloud
+- LLM/agent services: cloud APIs
+- Omi: Omi integration/API
+
+A deployment is useful for:
+- Demo reliability
+- Judge access
+- Video recording
+- Portfolio value
+
+============================================================
+23. DEMO VIDEO RECOMMENDED STRUCTURE
+============================================================
+
+Maximum:
+5 minutes
+
+Recommended target:
+3–4 minutes
+
+Suggested sequence:
+
+0:00–0:20
+Problem statement.
+
+0:20–0:45
+Show architecture:
+Omi → Lyzr → Agents → Qdrant → Output
+
+0:45–2:30
+Live product demonstration.
+
+2:30–3:15
+Demonstrate persistent memory:
+Ask a follow-up question that requires previous context.
+
+3:15–3:45
+Explain agent orchestration.
+
+3:45–4:15
+Show GitHub / architecture / technical stack.
+
+4:15–4:30
+Closing statement.
+
+============================================================
+24. FINAL SUBMISSION CHECKLIST
+============================================================
+
+Before submitting, verify:
+
+[ ] Project is built by one participant
+[ ] Omi is integrated
+[ ] Qdrant is integrated
+[ ] Lyzr is integrated
+[ ] Voice input works
+[ ] Persistent vector memory works
+[ ] Agent orchestration works
+[ ] End-to-end execution works
+[ ] Agents are observable in the demo
+[ ] GitHub repository is PUBLIC
+[ ] Repository code is clean
+[ ] README contains setup instructions
+[ ] README contains visual architecture diagram
+[ ] README explains Omi integration
+[ ] README explains Qdrant integration
+[ ] README explains Lyzr integration
+[ ] Demo video is 5 minutes or less
+[ ] Demo shows voice → memory → agent workflow
+[ ] Submission is uploaded through HiDevs
+[ ] Submission is completed BEFORE the internal October 10 deadline
+[ ] API keys / secrets are NOT committed to GitHub
+[ ] .env / secrets are excluded from the repository
+[ ] Final GitHub link works
+[ ] Demo video link works
+[ ] Deployment (if used) works
+[ ] Final submission has been tested from a clean browser/environment
+
+============================================================
+25. OFFICIAL LINKS
+============================================================
+
+Hackathon Portal:
+https://app.hidevs.xyz/hackathons/stop-prompting-solo-agents-hackathon-2026
+
+Public event / workshop information:
+https://luma.com/hack_Hyderabad
+
+============================================================
+26. SOURCE / VERIFICATION NOTE
+============================================================
+
+This file consolidates:
+- The hackathon details supplied from the HiDevs hackathon portal
+- The current public event information available from the organizers/event listing
+
+There is a deadline discrepancy:
+- Participant-confirmed HiDevs portal deadline: October 10, 2026
+- Public Luma listing: October 13, 2026 at 11:59 PM IST
+
+For project planning, October 10 is intentionally treated as the hard deadline so the project is finished safely before any later public deadline.
+
+END OF FILE
