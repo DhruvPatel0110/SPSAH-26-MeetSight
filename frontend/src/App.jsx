@@ -7,14 +7,7 @@ import ActionItemsPage from './components/ActionItems/ActionItemsPage';
 import ChatPageSimple from './components/Chatbot/ChatPageSimple';
 
 function App() {
-  const { isAuthenticated } = useAuth();
-
-  // Show login page if not authenticated
-  if (!isAuthenticated) {
-    return <LoginPage />;
-  }
-
-  // Show dashboard with routing if authenticated
+  // Show dashboard with routing
   return (
     <BrowserRouter>
       <TranscriptProvider>
@@ -22,6 +15,7 @@ function App() {
           <Route path="/" element={<DashboardLayout />} />
           <Route path="/actions" element={<ActionItemsPage />} />
           <Route path="/chat" element={<ChatPageSimple />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </TranscriptProvider>

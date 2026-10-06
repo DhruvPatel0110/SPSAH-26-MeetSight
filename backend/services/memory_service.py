@@ -18,8 +18,12 @@ class QdrantMemoryService:
         # Initialize client
         if settings.QDRANT_URL == "local" or not settings.QDRANT_URL.startswith("http"):
             os.makedirs(settings.QDRANT_STORAGE_PATH, exist_ok=True)
-            self.client = QdrantClient(path=settings.QDRANT_STORAGE_PATH)
-            print(f"[Qdrant] Connected to local persistent storage at: {settings.QDRANT_STORAGE_PATH}")
+            try:
+                self.client = QdrantClient(path=settings.QDRANT_STORAGE_PATH)
+                print(f"[Qdrant] Connected to local persistent storage at: {settings.QDRANT_STORAGE_PATH}")
+            except Exception as e:
+                print(f"[Qdrant] Lock warning on {settings.QDRANT_STORAGE_PATH} ({e}), falling back to in-memory store.")
+                self.client = QdrantClient(location=":memory:")
         else:
             self.client = QdrantClient(
                 url=settings.QDRANT_URL,
