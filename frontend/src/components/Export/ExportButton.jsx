@@ -4,7 +4,7 @@ import Button from '../UI/Button';
 import Modal from '../UI/Modal';
 import { exportAsText, exportAsPDF, exportAsJSON, exportAsMarkdown } from '../../utils/exportHelpers';
 
-const ExportButton = ({ transcript, summary, actionItems }) => {
+const ExportButton = ({ transcript, summary, actionItems, variant = 'ghost' }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState({
     transcript: true,
@@ -16,9 +16,8 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
     {
       id: 'pdf',
       name: 'PDF Document',
-      description: 'Professional PDF format (.pdf)',
+      description: 'Document format (.pdf)',
       icon: FileText,
-      color: 'text-status-error',
       handler: exportAsPDF
     },
     {
@@ -26,7 +25,6 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
       name: 'Text File',
       description: 'Plain text format (.txt)',
       icon: FileText,
-      color: 'text-accent-cyan',
       handler: exportAsText
     },
     {
@@ -34,7 +32,6 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
       name: 'JSON',
       description: 'Structured data format (.json)',
       icon: FileJson,
-      color: 'text-accent-purple',
       handler: exportAsJSON
     },
     {
@@ -42,7 +39,6 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
       name: 'Markdown',
       description: 'Markdown format (.md)',
       icon: FileCode,
-      color: 'text-accent-pink',
       handler: exportAsMarkdown
     }
   ];
@@ -75,7 +71,8 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
   return (
     <>
       <Button
-        variant="secondary"
+        variant={variant}
+        size="sm"
         icon={Download}
         onClick={() => setIsModalOpen(true)}
         disabled={!hasData}
@@ -86,14 +83,14 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Export Data"
-        size="lg"
+        title="Export Meeting Data"
+        size="md"
       >
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
           {/* Content Selection */}
           <div>
-            <h3 className="text-lg font-semibold text-text-primary mb-3">
-              Select Content to Export
+            <h3 className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint mb-3">
+              Content to include
             </h3>
             <div className="space-y-2">
               {[
@@ -103,12 +100,12 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
               ].map(({ key, label, available }) => (
                 <label
                   key={key}
-                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                  className={`flex items-center gap-3 p-3 rounded-lg border text-sm transition-colors duration-150 cursor-pointer ${
                     available
                       ? selectedFormats[key]
-                        ? 'border-accent-cyan bg-accent-cyan/10'
-                        : 'border-accent-cyan/20 hover:border-accent-cyan/40'
-                      : 'border-text-muted/20 opacity-50 cursor-not-allowed'
+                        ? 'border-accent bg-accent-soft text-ink'
+                        : 'border-line hover:bg-raised text-ink'
+                      : 'border-line opacity-40 cursor-not-allowed text-ink-faint'
                   }`}
                 >
                   <input
@@ -116,11 +113,11 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
                     checked={selectedFormats[key]}
                     onChange={() => available && toggleFormat(key)}
                     disabled={!available}
-                    className="w-5 h-5 rounded border-accent-cyan/30 text-accent-cyan focus:ring-accent-cyan focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-line text-accent accent-accent focus:ring-accent focus:ring-2 focus:ring-offset-2 focus:ring-offset-canvas"
                   />
-                  <span className="text-text-primary font-medium">{label}</span>
+                  <span className="font-medium">{label}</span>
                   {!available && (
-                    <span className="ml-auto text-xs text-text-muted">(Not available)</span>
+                    <span className="ml-auto text-xs text-ink-faint">(Not available)</span>
                   )}
                 </label>
               ))}
@@ -129,30 +126,30 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
 
           {/* Export Format Options */}
           <div>
-            <h3 className="text-lg font-semibold text-text-primary mb-3">
-              Choose Export Format
+            <h3 className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint mb-3">
+              Choose format
             </h3>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {exportFormats.map((format) => {
                 const Icon = format.icon;
                 return (
                   <button
                     key={format.id}
                     onClick={() => handleExport(format)}
-                    className="flex items-start gap-4 p-4 rounded-lg border border-accent-cyan/20 hover:border-accent-cyan hover:bg-accent-cyan/5 transition-all text-left group"
+                    className="flex items-center gap-3 p-3.5 rounded-lg border border-line hover:border-ink-muted/40 hover:bg-raised transition-colors duration-150 text-left group focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas"
                   >
-                    <div className={`p-2 bg-accent-cyan/10 rounded-lg group-hover:bg-accent-cyan/20 transition-colors`}>
-                      <Icon className={`w-6 h-6 ${format.color}`} />
+                    <div className="p-2 bg-raised rounded-md text-ink group-hover:text-accent transition-colors duration-150">
+                      <Icon className="w-4 h-4" />
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-text-primary mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-ink truncate">
                         {format.name}
                       </h4>
-                      <p className="text-sm text-text-secondary">
+                      <p className="text-xs text-ink-muted truncate">
                         {format.description}
                       </p>
                     </div>
-                    <Download className="w-5 h-5 text-text-secondary group-hover:text-accent-cyan transition-colors" />
+                    <Download className="w-4 h-4 text-ink-faint group-hover:text-ink transition-colors duration-150 flex-shrink-0" />
                   </button>
                 );
               })}
@@ -160,9 +157,9 @@ const ExportButton = ({ transcript, summary, actionItems }) => {
           </div>
 
           {/* Info Note */}
-          <div className="p-4 bg-accent-purple/10 border border-accent-purple/30 rounded-lg">
-            <p className="text-sm text-text-secondary">
-              <strong className="text-text-primary">Note:</strong> The exported file will include only the selected content sections in your chosen format.
+          <div className="p-3.5 bg-raised border border-line rounded-lg">
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Files are generated locally with only your selected content items.
             </p>
           </div>
         </div>

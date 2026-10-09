@@ -1,16 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
 import { 
   Mic, 
   Square, 
-  Radio, 
-  Copy, 
-  Check, 
-  Sparkles, 
-  Volume2, 
   HelpCircle,
-  Play
+  Copy, 
+  Check
 } from 'lucide-react';
+import Modal from '../UI/Modal';
 
 const SAMPLE_TRANSCRIPTS = [
   {
@@ -75,9 +71,8 @@ const OmiVoiceCapture = ({ onAudioUploaded, onTranscriptReady, isProcessing }) =
           type: 'audio/webm',
         });
         if (onAudioUploaded) {
-          onAudioUploaded(audioFile, 'Live Voice Capture (Omi Mode)');
+          onAudioUploaded(audioFile, 'Live Voice Capture');
         }
-        // Stop audio tracks
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -85,7 +80,7 @@ const OmiVoiceCapture = ({ onAudioUploaded, onTranscriptReady, isProcessing }) =
       setIsRecording(true);
     } catch (err) {
       console.error('Microphone access denied:', err);
-      alert('Microphone permission is required to capture live voice. Please enable microphone permissions in your browser.');
+      alert('Microphone permission is required to capture live voice. Please enable microphone access.');
     }
   };
 
@@ -108,142 +103,108 @@ const OmiVoiceCapture = ({ onAudioUploaded, onTranscriptReady, isProcessing }) =
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSimulateSample = (sample) => {
+  const handleSimulateSample = () => {
     if (onTranscriptReady) {
-      onTranscriptReady(sample.text, sample.title);
+      onTranscriptReady(SAMPLE_TRANSCRIPTS[0].text, SAMPLE_TRANSCRIPTS[0].title);
     }
   };
 
   return (
-    <div className="w-full bg-[#0c122b]/90 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur-xl relative overflow-hidden">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Left: Omi Branding & Status */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center relative shadow-lg shadow-cyan-500/10">
-            <Radio className="w-6 h-6 text-cyan-400" />
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+    <div className="w-full bg-surface border border-line rounded-lg p-6 shadow-sm dark:shadow-none border-l-[3px] border-l-accent">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Left: Section title & helper text */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            <span className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint">
+              Voice capture
             </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-base font-bold text-white">Omi Ambient Voice Capture</h4>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                Voice-First
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Stream live ambient conversations directly into Lyzr multi-agent reasoning DAG
-            </p>
-          </div>
+          <p className="text-sm text-ink-muted">
+            Stream ambient audio directly into the multi-agent pipeline or load a demo session.
+          </p>
         </div>
 
-        {/* Center: Record / Listening Trigger */}
-        <div className="flex items-center gap-3">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end">
           {!isRecording ? (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+            <button
               onClick={startRecording}
               disabled={isProcessing}
-              className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-accent text-accent-ink hover:bg-accent-hover text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas"
             >
-              <Mic className="w-4 h-4 text-white" />
-              <span>Start Live Voice Capture</span>
-            </motion.button>
+              <Mic className="w-4 h-4" />
+              <span>Start live capture</span>
+            </button>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-mono font-bold animate-pulse">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                <span>REC {formatTimer(recordingTime)}</span>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-raised border border-line text-xs font-mono tabular-nums text-ink">
+                <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <span>{formatTimer(recordingTime)}</span>
+              </span>
+              <button
                 onClick={stopRecording}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/80 hover:bg-red-500 text-white font-semibold text-xs shadow-lg shadow-red-500/20 transition-all"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-accent text-accent-ink hover:bg-accent-hover text-sm font-medium transition-colors duration-150 ring-2 ring-accent ring-offset-2 ring-offset-canvas animate-pulse focus:outline-none"
               >
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span>Finish & Analyze</span>
-              </motion.button>
+                <Square className="w-3.5 h-3.5" />
+                <span>Stop capture</span>
+              </button>
             </div>
           )}
 
-          {/* Quick Demo Simulator Button */}
-          <div className="relative group">
-            <button
-              onClick={() => handleSimulateSample(SAMPLE_TRANSCRIPTS[0])}
-              disabled={isProcessing || isRecording}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs text-slate-300 font-medium transition-all disabled:opacity-50"
-              title="Test the complete pipeline with a realistic meeting transcript"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Demo Sample</span>
-            </button>
-          </div>
+          <button
+            onClick={handleSimulateSample}
+            disabled={isProcessing || isRecording}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-line bg-surface hover:bg-raised text-ink text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas"
+          >
+            Load demo
+          </button>
 
-          {/* Omi Device Webhook Info */}
+          {/* Help icon ghost button */}
           <button
             onClick={() => setShowOmiModal(true)}
-            className="p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/80 text-slate-400 hover:text-slate-200 transition-colors"
-            title="Omi Hardware Webhook Details"
+            className="p-2 rounded-md text-ink-faint hover:text-ink hover:bg-raised transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas"
+            title="Voice capture & hardware integration details"
+            aria-label="Voice capture help"
           >
             <HelpCircle className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Omi Device Webhook Details Modal */}
-      <AnimatePresence>
-        {showOmiModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-[#0e1533] border border-slate-800 rounded-2xl p-6 shadow-2xl relative"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <Radio className="w-5 h-5 text-cyan-400" />
-                  <h3 className="text-base font-bold text-white">Physical Omi Hardware Integration</h3>
-                </div>
-                <button
-                  onClick={() => setShowOmiModal(false)}
-                  className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800"
-                >
-                  Close
-                </button>
-              </div>
+      {/* Help Modal */}
+      <Modal
+        isOpen={showOmiModal}
+        onClose={() => setShowOmiModal(false)}
+        title="Voice Capture Details"
+        size="md"
+      >
+        <div className="space-y-4 text-sm text-ink">
+          <p className="text-ink-muted leading-relaxed">
+            MeetSight ingests live audio streams from your browser microphone or physical wearable devices such as the Omi pendant. Ingested streams are transcribed and dispatched to the multi-agent reasoning DAG.
+          </p>
 
-              <div className="mt-4 space-y-4 text-xs text-slate-300">
-                <p>
-                  MeetSight provides a dedicated ingestion endpoint for the <strong>Omi necklace / wearable microphone</strong>. When configured in the Omi mobile app, ambient conversations are streamed directly to this backend:
-                </p>
-
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px]">
-                  <div className="text-slate-400 mb-1">Webhook URL (Omi App Developer Settings):</div>
-                  <div className="flex items-center justify-between gap-2 text-cyan-300">
-                    <span className="truncate">{webhookUrl}</span>
-                    <button
-                      onClick={copyWebhook}
-                      className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-200">
-                  <p className="font-semibold text-cyan-300 mb-1">Browser Companion Mode:</p>
-                  If you do not have an Omi physical wearable attached right now, use the <strong>"Start Live Voice Capture"</strong> button above or <strong>"Demo Sample"</strong> to trigger the complete agentic pipeline live!
-                </div>
-              </div>
-            </motion.div>
+          <div className="p-3.5 bg-raised border border-line rounded-lg">
+            <div className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint mb-1.5">
+              Webhook Endpoint (Omi App)
+            </div>
+            <div className="flex items-center justify-between gap-2 font-mono text-xs text-ink">
+              <span className="truncate select-all">{webhookUrl}</span>
+              <button
+                onClick={copyWebhook}
+                className="p-1 rounded text-ink-muted hover:text-ink transition-colors flex-shrink-0"
+                title="Copy webhook URL"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-sage" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+
+          <div className="p-3.5 bg-raised border border-line rounded-lg text-xs text-ink-muted leading-relaxed">
+            <span className="font-semibold text-ink">Browser Companion Mode:</span> If no physical wearable is connected, click <strong className="text-ink">"Start live capture"</strong> to record from your system mic, or <strong className="text-ink">"Load demo"</strong> to run analysis on sample transcripts.
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

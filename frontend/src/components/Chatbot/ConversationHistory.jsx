@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Trash2, Clock, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { MessageSquare, Clock, ChevronRight } from 'lucide-react';
 import Card from '../UI/Card';
 import { getUserConversations, getTranscriptConversations } from '../../services/conversationService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,10 +20,8 @@ const ConversationHistory = ({ transcriptId, onSelectConversation, currentConver
     try {
       let result;
       if (transcriptId) {
-        // Get conversations for specific transcript
         result = await getTranscriptConversations(user.uid, transcriptId);
       } else {
-        // Get all user conversations
         result = await getUserConversations(user.uid);
       }
 
@@ -62,7 +59,7 @@ const ConversationHistory = ({ transcriptId, onSelectConversation, currentConver
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">
-              <div className="h-16 bg-gray-800/50 rounded-lg"></div>
+              <div className="h-14 bg-surface-2 rounded-md" />
             </div>
           ))}
         </div>
@@ -73,59 +70,49 @@ const ConversationHistory = ({ transcriptId, onSelectConversation, currentConver
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-4">
-        <MessageSquare className="w-5 h-5 text-cyan-400" />
-        <h3 className="text-lg font-semibold text-white">
+        <MessageSquare className="w-4 h-4 text-ink-muted" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
           {transcriptId ? 'This Meeting' : 'All Conversations'}
         </h3>
       </div>
 
       {conversations.length === 0 ? (
-        <div className="text-center py-8">
-          <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">No conversations yet</p>
-          <p className="text-gray-500 text-xs mt-1">
-            Start asking questions about your meetings
-          </p>
+        <div className="text-center py-6 text-xs text-ink-muted">
+          No conversations yet. Start asking questions to view history.
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {conversations.map((conversation) => (
-            <motion.button
+            <button
               key={conversation.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               onClick={() => onSelectConversation(conversation)}
-              className={`w-full text-left p-3 rounded-lg transition-all ${
+              className={`w-full text-left p-3 rounded-md transition-colors border ${
                 currentConversationId === conversation.id
-                  ? 'bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30'
-                  : 'bg-gray-800/30 hover:bg-gray-800/50 border border-transparent'
+                  ? 'bg-surface-2 border-line text-ink'
+                  : 'bg-surface hover:bg-surface-2 border-transparent text-ink'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-white truncate">
+                  <h4 className="text-sm font-medium text-ink truncate">
                     {conversation.title}
                   </h4>
                   {conversation.lastMessage && (
-                    <p className="text-xs text-gray-400 truncate mt-1">
+                    <p className="text-xs text-ink-muted truncate mt-0.5">
                       {conversation.lastMessage}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Clock className="w-3 h-3 text-gray-500" />
-                    <span className="text-xs text-gray-500">
-                      {formatDate(conversation.updatedAt)}
-                    </span>
+                  <div className="flex items-center gap-2 mt-1.5 text-xs text-ink-faint font-mono">
+                    <Clock className="w-3 h-3" />
+                    <span>{formatDate(conversation.updatedAt)}</span>
                     {conversation.messages && (
-                      <span className="text-xs text-gray-500">
-                        • {conversation.messages.length} messages
-                      </span>
+                      <span>• {conversation.messages.length} msgs</span>
                     )}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <ChevronRight className="w-4 h-4 text-ink-faint flex-shrink-0 mt-0.5" />
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
       )}
@@ -134,5 +121,3 @@ const ConversationHistory = ({ transcriptId, onSelectConversation, currentConver
 };
 
 export default ConversationHistory;
-
-// Made with Bob

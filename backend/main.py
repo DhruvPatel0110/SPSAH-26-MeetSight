@@ -1,5 +1,6 @@
 import json
 import asyncio
+import logging
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,9 @@ from config import settings
 from services.memory_service import memory_service
 from services.orchestrator_service import orchestrator
 from services.omi_service import omi_service
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("meetsight")
 
 app = FastAPI(
     title="MeetSight AI - Multi-Agent Meeting Intelligence",
@@ -121,9 +125,15 @@ async def process_meeting(request: ProcessMeetingRequest):
 async def upload_audio(file: UploadFile = File(...), title: Optional[str] = Form(None)):
     """
     Transcribe audio recording via Whisper and automatically trigger the Lyzr agent DAG.
+    Supports audio files up to 100MB by automatically compressing/chunking for Groq Whisper.
     """
     try:
         audio_bytes = await file.read()
+        file_size_mb = len(audio_bytes) / (1024 * 1024)
+        if file_size_mb > 100.0:
+            raise HTTPException(status_code=400, detail=f"File size ({file_size_mb:.1f}MB) exceeds the 100MB maximum limit.")
+
+        logger.info(f"Processing audio upload: '{file.filename}' ({file_size_mb:.2f} MB)")
         transcription_result = omi_service.transcribe_audio_bytes(audio_bytes, filename=file.filename)
         transcript = transcription_result.get("text", "")
         
@@ -146,7 +156,10 @@ async def upload_audio(file: UploadFile = File(...), title: Optional[str] = Form
             "transcription": transcription_result,
             "meeting": meeting_record
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error processing audio upload '{file.filename}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -243,4 +256,4 @@ async def agent_stream(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=False)
+    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=True)

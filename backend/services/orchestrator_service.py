@@ -75,23 +75,36 @@ If the retrieved context does not contain the answer, politely state what is kno
 class LyzrMultiAgentOrchestrator:
     def __init__(self):
         self.groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
-        self.model_name = "openai/gpt-oss-120b"
+        self.model_name = "openai/gpt-oss-20b"
 
     def _call_llm(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> str:
         """Execute LLM inference with Groq or fallback."""
         if not self.groq_client:
             raise ValueError("GROQ_API_KEY is not configured in backend/.env")
             
-        chat_completion = self.groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ],
-            model=self.model_name,
-            temperature=temperature,
-            response_format={"type": "json_object"} if "JSON" in system_prompt else None
-        )
-        return chat_completion.choices[0].message.content.strip()
+        try:
+            chat_completion = self.groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                model=self.model_name,
+                temperature=temperature,
+                response_format={"type": "json_object"} if "JSON" in system_prompt else None
+            )
+            return chat_completion.choices[0].message.content.strip()
+        except Exception:
+            fallback_model = "openai/gpt-oss-120b" if self.model_name != "openai/gpt-oss-120b" else "qwen/qwen3.8-27b"
+            chat_completion = self.groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                model=fallback_model,
+                temperature=temperature,
+                response_format={"type": "json_object"} if "JSON" in system_prompt else None
+            )
+            return chat_completion.choices[0].message.content.strip()
 
     def _clean_json(self, response_text: str) -> Any:
         """Strip markdown codeblocks if present and parse JSON."""

@@ -169,7 +169,7 @@ export const exportAsJSON = (transcript, summary, actionItems) => {
 };
 
 export const exportAsMarkdown = (transcript, summary, actionItems) => {
-  let content = `# MeetIQ Export
+  let content = `# MeetSight Export
 
 `;
 

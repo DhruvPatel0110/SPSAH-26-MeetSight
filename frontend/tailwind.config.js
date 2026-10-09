@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,44 +8,55 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          bg: '#0a0a0a',
-          surface: '#1a1a1a',
-          hover: '#252525',
+        canvas: 'var(--color-canvas)',
+        surface: 'var(--color-surface)',
+        raised: 'var(--color-raised)',
+        line: 'var(--color-line)',
+        ink: {
+          DEFAULT: 'var(--color-ink)',
+          muted: 'var(--color-ink-muted)',
+          faint: 'var(--color-ink-faint)',
         },
+        muted: 'var(--color-ink-muted)',
+        faint: 'var(--color-ink-faint)',
         accent: {
-          cyan: '#60a5fa',
-          purple: '#a78bfa',
-          pink: '#f472b6',
+          DEFAULT: 'var(--color-accent)',
+          hover: 'var(--color-accent-hover)',
+          soft: 'var(--color-accent-soft)',
+          ink: 'var(--color-accent-ink)',
         },
-        text: {
-          primary: '#ffffff',
-          secondary: '#d1d5db',
-          muted: '#9ca3af',
+        amber: {
+          DEFAULT: 'var(--color-amber)',
+          soft: 'var(--color-amber-soft)',
         },
-        status: {
-          success: '#10b981',
-          warning: '#f59e0b',
-          error: '#ef4444',
-        }
+        sage: {
+          DEFAULT: 'var(--color-sage)',
+          soft: 'var(--color-sage-soft)',
+        },
+        rose: {
+          DEFAULT: 'var(--color-rose)',
+          soft: 'var(--color-rose-soft)',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader', 'Fraunces', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        'glow-cyan': '0 0 20px rgba(0, 212, 255, 0.3)',
-        'glow-purple': '0 0 20px rgba(124, 58, 237, 0.3)',
+        sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        xl: '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
       },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'shimmer': 'shimmer 2s linear infinite',
+      borderRadius: {
+        xl: '0.75rem',
+        lg: '0.5rem',
+        md: '0.375rem',
       },
-      keyframes: {
-        shimmer: {
-          '0%': { backgroundPosition: '-1000px 0' },
-          '100%': { backgroundPosition: '1000px 0' },
-        }
-      }
+      transitionDuration: {
+        150: '150ms',
+        200: '200ms',
+        600: '600ms',
+      },
     },
   },
   plugins: [],

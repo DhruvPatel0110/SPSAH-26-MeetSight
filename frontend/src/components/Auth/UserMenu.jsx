@@ -1,7 +1,5 @@
-// User Menu Component - Firebase Auth
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { User, LogOut, History, Settings } from 'lucide-react';
+import { User, LogOut, History } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { logout } from '../../services/authService';
 
@@ -12,7 +10,6 @@ const UserMenu = ({ onHistoryClick }) => {
   const handleLogout = async () => {
     await logout();
     setIsOpen(false);
-    // AuthContext will handle the state update automatically
   };
 
   if (!user) return null;
@@ -22,123 +19,73 @@ const UserMenu = ({ onHistoryClick }) => {
       {/* User Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 p-2 hover:bg-primary-hover rounded-lg transition-colors"
+        className="flex items-center gap-2 p-1 hover:bg-raised rounded-md transition-colors duration-150 text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas"
       >
         {user.photoURL ? (
           <img
             src={user.photoURL}
-            alt={user.displayName}
-            className="w-10 h-10 rounded-full border-2 border-accent-cyan/30"
+            alt={user.displayName || 'User'}
+            className="w-7 h-7 rounded-full border border-line object-cover"
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-accent-cyan/20 border-2 border-accent-cyan/30 flex items-center justify-center">
-            <User className="w-5 h-5 text-accent-cyan" />
+          <div className="w-7 h-7 rounded-full bg-raised border border-line flex items-center justify-center text-ink-muted">
+            <User className="w-4 h-4" />
           </div>
         )}
-        <div className="hidden md:block text-left">
-          <p className="text-sm font-semibold text-text-primary">
-            {user.displayName || 'User'}
-          </p>
-          <p className="text-xs text-text-secondary">
-            {user.email}
-          </p>
-        </div>
+        <span className="hidden md:inline text-xs font-medium text-ink truncate max-w-[100px]">
+          {user.displayName || 'User'}
+        </span>
       </button>
 
       {/* Dropdown Menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setIsOpen(false)}
-            />
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
 
-            {/* Menu */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 mt-2 w-64 bg-primary-surface border border-accent-cyan/20 rounded-lg shadow-xl z-50 overflow-hidden"
-            >
-              {/* User Info */}
-              <div className="p-4 border-b border-accent-cyan/20">
-                <div className="flex items-center gap-3 mb-2">
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-accent-cyan/20 flex items-center justify-center">
-                      <User className="w-6 h-6 text-accent-cyan" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-semibold text-text-primary">
-                      {user.displayName || 'User'}
-                    </p>
-                    <p className="text-sm text-text-secondary">{user.email}</p>
-                  </div>
-                </div>
-              </div>
+          {/* Menu */}
+          <div
+            className="absolute right-0 mt-2 w-56 bg-surface border border-line rounded-lg shadow-sm dark:shadow-none z-50 overflow-hidden py-1 transition-all duration-150"
+          >
+            {/* User Info */}
+            <div className="px-4 py-3 border-b border-line">
+              <p className="text-xs font-semibold text-ink truncate">
+                {user.displayName || 'User'}
+              </p>
+              <p className="text-[11px] text-ink-muted truncate font-mono">{user.email}</p>
+            </div>
 
-              {/* Menu Items */}
-              <div className="py-2">
-                <button
-                  onClick={() => {
-                    onHistoryClick?.();
-                    setIsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-primary-hover transition-colors text-left"
-                >
-                  <History className="w-5 h-5 text-accent-cyan" />
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">
-                      Transcript History
-                    </p>
-                    <p className="text-xs text-text-secondary">
-                      View past transcripts
-                    </p>
-                  </div>
-                </button>
+            {/* Menu Items */}
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  onHistoryClick?.();
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-raised transition-colors duration-150 text-left text-xs text-ink"
+              >
+                <History className="w-3.5 h-3.5 text-ink-muted" />
+                <span>Transcript History</span>
+              </button>
 
-                <button
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-primary-hover transition-colors text-left"
-                >
-                  <Settings className="w-5 h-5 text-accent-purple" />
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">
-                      Settings
-                    </p>
-                    <p className="text-xs text-text-secondary">
-                      Preferences & account
-                    </p>
-                  </div>
-                </button>
+              <div className="my-1 border-t border-line" />
 
-                <div className="my-2 h-px bg-accent-cyan/20" />
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-status-error/10 transition-colors text-left"
-                >
-                  <LogOut className="w-5 h-5 text-status-error" />
-                  <p className="text-sm font-medium text-status-error">
-                    Sign Out
-                  </p>
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-rose-soft transition-colors duration-150 text-left text-xs text-rose"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
 export default UserMenu;
-
-// Made with Bob

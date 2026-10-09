@@ -1,150 +1,113 @@
-import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Sparkles, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Button from '../UI/Button';
+import { useState, useEffect } from 'react';
+import { Send, MessageSquare, Loader2 } from 'lucide-react';
 import Card from '../UI/Card';
-import { answerQuestion, indexTranscript, isTranscriptIndexed } from '../../services/ragService';
-import { createConversation, addMessage, getConversation } from '../../services/conversationService';
+import { 
+  createConversation, 
+  getConversation, 
+  addMessageToConversation 
+} from '../../services/conversationService';
 import { useAuth } from '../../contexts/AuthContext';
+import { askRagQuestion } from '../../services/ragService';
 
 const ChatInterface = ({ transcript, transcriptId }) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: "Hi! I'm your meeting assistant. I've analyzed your meeting and I'm ready to answer any questions. What would you like to know?"
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [conversationId, setConversationId] = useState(null);
-  const [isIndexing, setIsIndexing] = useState(false);
-  const [isIndexed, setIsIndexed] = useState(false);
-  const [error, setError] = useState(null);
-  const messagesEndRef = useRef(null);
 
-  // Scroll to bottom when messages change
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => {
+    if (user && transcriptId && !conversationId) {
+      initConversation();
+    }
+  }, [user, transcriptId]);
+
+  const initConversation = async () => {
+    try {
+      const result = await createConversation(
+        user.uid,
+        transcriptId,
+        transcript?.filename ? `Chat: ${transcript.filename}` : 'Meeting Chat'
+      );
+      if (result.success) {
+        setConversationId(result.conversationId);
+      }
+    } catch (error) {
+      console.error('Error initializing conversation:', error);
+    }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Initialize conversation and check indexing status
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!user || !transcriptId) return;
-
-      try {
-        // Check if transcript is indexed
-        const indexed = await isTranscriptIndexed(user.uid, transcriptId);
-        setIsIndexed(indexed);
-
-        // If not indexed, index it
-        if (!indexed && transcript) {
-          setIsIndexing(true);
-          await indexTranscript(user.uid, transcriptId, transcript);
-          setIsIndexed(true);
-          setIsIndexing(false);
-        }
-
-        // Create a new conversation
-        const result = await createConversation(
-          user.uid,
-          transcriptId,
-          'Meeting Q&A'
-        );
-
-        if (result.success) {
-          setConversationId(result.id);
-          
-          // Add welcome message
-          const welcomeMessage = {
-            role: 'assistant',
-            content: "Hi! I'm ready to answer questions about this meeting. What would you like to know?",
-          };
-          setMessages([welcomeMessage]);
-        }
-      } catch (err) {
-        console.error('Error initializing chat:', err);
-        setError('Failed to initialize chat. Please try again.');
-      }
-    };
-
-    initializeChat();
-  }, [user, transcriptId, transcript]);
-
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading || !conversationId) return;
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!inputMessage.trim() || isLoading) return;
 
     const userMessage = {
       role: 'user',
-      content: input.trim(),
+      content: inputMessage
     };
 
-    // Add user message to UI
     setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    setInputMessage('');
     setIsLoading(true);
-    setError(null);
 
     try {
-      // Save user message to Firestore
-      await addMessage(conversationId, userMessage);
+      if (conversationId) {
+        await addMessageToConversation(conversationId, 'user', userMessage.content);
+      }
 
-      // Get answer using RAG
-      const result = await answerQuestion(
-        user.uid,
-        transcriptId,
+      const ragResponse = await askRagQuestion(
+        transcript?.text || '',
         userMessage.content,
         messages
       );
 
-      if (result.success) {
-        const assistantMessage = {
-          role: 'assistant',
-          content: result.answer,
-          sources: result.sources,
-        };
-
-        // Add assistant message to UI
-        setMessages(prev => [...prev, assistantMessage]);
-
-        // Save assistant message to Firestore
-        await addMessage(conversationId, assistantMessage);
-      } else {
-        throw new Error(result.error || 'Failed to get answer');
-      }
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError('Failed to get answer. Please try again.');
-      
-      // Add error message
-      const errorMessage = {
+      const assistantMessage = {
         role: 'assistant',
-        content: "I'm sorry, I encountered an error. Please try asking your question again.",
+        content: ragResponse.answer,
+        sources: ragResponse.sources
       };
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (conversationId) {
+        await addMessageToConversation(
+          conversationId,
+          'assistant',
+          assistantMessage.content,
+          assistantMessage.sources
+        );
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error while processing your request. Please try again.'
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  if (isIndexing) {
+  if (isInitializing) {
     return (
-      <Card className="p-6">
+      <Card className="p-8">
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <Loader2 className="w-12 h-12 text-cyan-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-accent animate-spin" />
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-sm font-semibold text-ink mb-1">
               Preparing Meeting for Q&A
             </h3>
-            <p className="text-gray-400 text-sm">
-              Indexing transcript for intelligent search... This may take a moment.
+            <p className="text-ink-muted text-xs">
+              Indexing transcript for intelligent search...
             </p>
           </div>
         </div>
@@ -153,124 +116,80 @@ const ChatInterface = ({ transcript, transcriptId }) => {
   }
 
   return (
-    <Card className="flex flex-col h-[600px]">
+    <Card className="flex flex-col h-[600px] p-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-gray-800">
-        <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-lg">
-          <MessageSquare className="w-5 h-5 text-cyan-400" />
+      <div className="flex items-center gap-3 p-4 border-b border-line">
+        <div className="p-2 bg-surface-2 rounded-md">
+          <MessageSquare className="w-4 h-4 text-ink-muted" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Meeting Q&A</h3>
-          <p className="text-sm text-gray-400">Ask questions about this meeting</p>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-ink">Meeting Q&A</h3>
+          <p className="text-xs text-ink-muted">Ask questions about this meeting</p>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <AnimatePresence>
-          {messages.map((message, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-md p-3 text-xs leading-relaxed border ${
+                message.role === 'user'
+                  ? 'bg-surface-2 border-line text-ink'
+                  : 'bg-surface border-line text-ink'
+              }`}
             >
-              <div
-                className={`max-w-[80%] rounded-lg p-4 ${
-                  message.role === 'user'
-                    ? 'bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-white'
-                    : 'bg-gray-800/50 text-gray-100'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  {message.role === 'assistant' && (
-                    <Sparkles className="w-4 h-4 text-cyan-400 mt-1 flex-shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    
-                    {/* Show sources if available */}
-                    {message.sources && message.sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-700">
-                        <p className="text-xs text-gray-400 mb-2">Sources from meeting:</p>
-                        {message.sources.map((source, idx) => (
-                          <div key={idx} className="text-xs text-gray-500 mb-1">
-                            • {source.text}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              <p className="whitespace-pre-wrap">{message.content}</p>
+              
+              {message.sources && message.sources.length > 0 && (
+                <div className="mt-2.5 pt-2.5 border-t border-line">
+                  <p className="text-[11px] text-ink-muted mb-1 font-semibold">Sources:</p>
+                  {message.sources.map((source, idx) => (
+                    <div key={idx} className="text-[11px] text-ink-muted italic mb-0.5">
+                      • {source.text}
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              )}
+            </div>
+          </div>
+        ))}
 
         {isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
-          >
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-                <span className="text-sm text-gray-400">Thinking...</span>
-              </div>
+          <div className="flex justify-start">
+            <div className="bg-surface border border-line rounded-md p-3 flex items-center gap-2 text-xs text-ink-muted">
+              <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" />
+              <span>Thinking...</span>
             </div>
-          </motion.div>
+          </div>
         )}
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-center"
-          >
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-red-400">{error}</span>
-            </div>
-          </motion.div>
-        )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-800">
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-line bg-surface">
         <div className="flex gap-2">
           <input
             type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask a question about the meeting..."
-            disabled={isLoading || !isIndexed}
-            className="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Ask a question about this meeting..."
+            disabled={isLoading}
+            className="flex-1 bg-surface border border-line rounded-md px-3.5 py-2 text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
           />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!input.trim() || isLoading || !isIndexed}
-            className="px-4"
+          <button
+            type="submit"
+            disabled={isLoading || !inputMessage.trim()}
+            className="px-3.5 py-2 bg-accent text-accent-ink hover:bg-accent-hover rounded-md text-xs font-medium transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent"
           >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </Button>
+            <Send className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Press Enter to send, Shift+Enter for new line
-        </p>
-      </div>
+      </form>
     </Card>
   );
 };
 
 export default ChatInterface;
-
-// Made with Bob

@@ -1,74 +1,91 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Award, Tag, Sparkles } from 'lucide-react';
-
 const DecisionsPanel = ({ decisions = [] }) => {
   if (!decisions || decisions.length === 0) {
     return (
-      <div className="bg-[#0e142e]/80 border border-slate-800 rounded-2xl p-6 text-center text-slate-400 text-xs">
-        <CheckCircle2 className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-40" />
-        No explicit decisions extracted from this meeting yet.
-      </div>
+      <section className="bg-surface border border-line rounded-lg p-6 shadow-sm dark:shadow-none">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber" />
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint">
+            Decisions
+          </h3>
+        </div>
+        <p className="font-serif text-base text-ink-muted">
+          No consensus decisions recorded yet.
+        </p>
+        <p className="text-xs text-ink-faint mt-1">
+          Confirmed team resolutions and architectural choices will appear here.
+        </p>
+      </section>
     );
   }
 
   return (
-    <div className="bg-[#0e142e]/90 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-xl relative overflow-hidden">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 shadow-lg shadow-emerald-500/10">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-white">Confirmed Decisions & Consensus</h3>
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {decisions.length} Approved
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Extracted by Lyzr Decision Engine and indexed into Qdrant semantic memory
-            </p>
-          </div>
+    <section className="bg-surface border border-line rounded-lg p-6 shadow-sm dark:shadow-none space-y-4">
+      {/* Header with 6px amber dot & amber decision count badge */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber" />
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint">
+            Decisions
+          </h3>
         </div>
+        <span className="px-2 py-0.5 rounded-full text-xs font-mono tabular-nums font-semibold bg-amber-soft text-amber">
+          {decisions.length}
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      {/* Decision Cards with 3px amber left border */}
+      <div className="space-y-3">
         {decisions.map((dec, i) => {
-          const text = typeof dec === 'string' ? dec : dec.text;
+          const text = typeof dec === 'string' ? dec : (dec.text || dec.decision || dec.title || '');
           const rationale = typeof dec === 'object' ? dec.rationale : null;
-          const category = typeof dec === 'object' ? dec.category : 'General';
+          const category = typeof dec === 'object' ? (dec.category || 'Consensus') : 'Consensus';
+          const status = typeof dec === 'object' ? (dec.status || 'Approved') : 'Approved';
+          const author = typeof dec === 'object' && dec.author ? dec.author : null;
+          const time = typeof dec === 'object' && dec.timestamp ? dec.timestamp : null;
 
           return (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 transition-all relative group"
+              className="bg-surface border border-line border-l-[3px] border-l-amber rounded-lg p-4 shadow-sm dark:shadow-none hover:bg-raised transition-colors duration-150 flex flex-col gap-2"
             >
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1">
-                  <Tag className="w-3 h-3" />
-                  {category || 'Decision'}
-                </span>
-                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
-                  Approved
-                </span>
-              </div>
-              <p className="text-xs font-semibold text-slate-100 leading-relaxed">
-                {text}
-              </p>
-              {rationale && (
-                <p className="text-[11px] text-slate-400 mt-2 bg-slate-950/50 p-2 rounded-lg border border-slate-800/60">
-                  <span className="text-slate-300 font-medium">Context:</span> {rationale}
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-sm font-medium text-ink leading-relaxed">
+                  {text}
                 </p>
-              )}
-            </motion.div>
+                {time && (
+                  <span className="font-mono tabular-nums text-xs text-ink-faint flex-shrink-0 pt-0.5">
+                    {time}
+                  </span>
+                )}
+              </div>
+
+              {/* Category, Status & Rationale */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted pt-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-soft text-amber">
+                    {category}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-sage-soft text-sage capitalize">
+                    {status}
+                  </span>
+                  {author && (
+                    <span className="text-ink-muted">
+                      by <span className="text-ink font-medium">{author}</span>
+                    </span>
+                  )}
+                </div>
+
+                {rationale && (
+                  <span className="text-ink-faint text-xs italic max-w-sm" title={rationale}>
+                    {rationale}
+                  </span>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 };
 

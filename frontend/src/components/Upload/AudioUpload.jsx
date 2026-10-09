@@ -1,7 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Upload, File, X, CheckCircle } from 'lucide-react';
-import Card from '../UI/Card';
+import { Upload, File, X, Check } from 'lucide-react';
 import Button from '../UI/Button';
 
 const AudioUpload = ({ onFileUpload }) => {
@@ -37,14 +35,12 @@ const AudioUpload = ({ onFileUpload }) => {
   };
 
   const handleFile = (file) => {
-    // Validate file type
     const validTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/m4a', 'audio/ogg'];
     if (!validTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
       alert('Please upload a valid audio file (MP3, WAV, M4A, OGG)');
       return;
     }
 
-    // Validate file size (max 100MB)
     if (file.size > 100 * 1024 * 1024) {
       alert('File size must be less than 100MB');
       return;
@@ -52,14 +48,13 @@ const AudioUpload = ({ onFileUpload }) => {
 
     setIsUploading(true);
     
-    // Simulate upload process
     setTimeout(() => {
       setUploadedFile(file);
       setIsUploading(false);
       if (onFileUpload) {
         onFileUpload(file);
       }
-    }, 1500);
+    }, 1200);
   };
 
   const removeFile = () => {
@@ -78,25 +73,25 @@ const AudioUpload = ({ onFileUpload }) => {
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-3 bg-accent-cyan/10 rounded-lg">
-          <Upload className="w-6 h-6 text-accent-cyan" />
-        </div>
-        <h2 className="text-xl font-bold text-text-primary">Upload Audio</h2>
+    <section className="bg-surface border border-line rounded-lg p-6 shadow-sm dark:shadow-none space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-ink-faint" />
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-ink-faint">
+          Audio Upload
+        </h3>
       </div>
 
       {!uploadedFile ? (
-        <motion.div
+        <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          animate={{
-            borderColor: isDragging ? '#60a5fa' : 'rgba(96, 165, 250, 0.3)',
-            backgroundColor: isDragging ? 'rgba(96, 165, 250, 0.1)' : 'transparent'
-          }}
-          className="border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all flex-1 flex flex-col items-center justify-center"
           onClick={() => fileInputRef.current?.click()}
+          className={`border border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors duration-150 ${
+            isDragging
+              ? 'border-accent bg-raised'
+              : 'border-line hover:border-ink-faint hover:bg-raised/50 bg-surface'
+          }`}
         >
           <input
             ref={fileInputRef}
@@ -106,68 +101,50 @@ const AudioUpload = ({ onFileUpload }) => {
             className="hidden"
           />
           
-          <motion.div
-            animate={{ scale: isDragging ? 1.1 : 1 }}
-            className="inline-block p-4 bg-accent-cyan/10 rounded-full mb-4"
-          >
-            <Upload className="w-12 h-12 text-accent-cyan" />
-          </motion.div>
+          <Upload className="w-7 h-7 text-ink-faint mx-auto mb-2" />
           
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
-            {isDragging ? 'Drop your file here' : 'Drag & drop your audio file'}
-          </h3>
-          <p className="text-text-secondary mb-4">
-            or click to browse
+          <p className="text-sm font-medium text-ink">
+            {isDragging ? 'Drop audio file here' : 'Drop recorded file or click to browse'}
           </p>
-          <p className="text-sm text-text-muted">
-            Supports: MP3, WAV, M4A, OGG (Max 100MB)
+          <p className="text-xs text-ink-muted mt-1 font-mono tabular-nums">
+            MP3, WAV, M4A, OGG (Max 100MB)
           </p>
-        </motion.div>
+        </div>
       ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex items-start gap-4 p-5 bg-primary-hover rounded-lg border border-accent-cyan/30">
-            <div className="p-3 bg-accent-cyan/10 rounded-lg">
-              <File className="w-6 h-6 text-accent-cyan" />
-            </div>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 p-4 bg-raised rounded-lg border border-line">
+            <File className="w-5 h-5 text-ink-muted flex-shrink-0 mt-0.5" />
             
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-text-primary truncate">
+                  <h4 className="text-sm font-medium text-ink truncate">
                     {uploadedFile.name}
                   </h4>
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-xs text-ink-muted font-mono tabular-nums">
                     {formatFileSize(uploadedFile.size)}
                   </p>
                 </div>
                 <button
                   onClick={removeFile}
-                  className="text-text-secondary hover:text-status-error transition-colors"
+                  className="text-ink-muted hover:text-rose transition-colors duration-150 p-1"
+                  aria-label="Remove uploaded file"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               
               {isUploading ? (
                 <div className="mt-3">
-                  <div className="h-2 bg-primary-surface rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: 1.5 }}
-                      className="h-full bg-gradient-to-r from-accent-cyan to-accent-purple"
-                    />
+                  <div className="h-1 bg-line rounded-full overflow-hidden">
+                    <div className="h-full bg-accent animate-pulse w-3/4" />
                   </div>
-                  <p className="text-sm text-text-secondary mt-2">Uploading...</p>
+                  <p className="text-xs text-ink-muted mt-1.5">Uploading...</p>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 mt-2 text-status-success">
-                  <CheckCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">Upload complete</span>
+                <div className="flex items-center gap-1.5 mt-2 text-sage text-xs font-medium">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Upload complete</span>
                 </div>
               )}
             </div>
@@ -176,13 +153,13 @@ const AudioUpload = ({ onFileUpload }) => {
           <Button 
             variant="secondary" 
             onClick={() => fileInputRef.current?.click()}
-            className="w-full"
+            className="w-full text-xs"
           >
-            Upload Different File
+            Upload a different file
           </Button>
-        </motion.div>
+        </div>
       )}
-    </Card>
+    </section>
   );
 };
 

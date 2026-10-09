@@ -1,7 +1,5 @@
-// Authentication Context - Firebase Integration
 import { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthChange } from '../services/authService';
-import { isFirebaseConfigured } from '../config/firebase';
 
 const AuthContext = createContext();
 
@@ -18,10 +16,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen to Firebase auth state changes
     const unsubscribe = onAuthChange((firebaseUser) => {
       if (firebaseUser) {
-        // Convert Firebase user to our user format
         setUser({
           id: firebaseUser.uid,
           email: firebaseUser.email,
@@ -34,7 +30,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    // Cleanup subscription
     return () => unsubscribe();
   }, []);
 
@@ -47,10 +42,10 @@ export const AuthProvider = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-primary-bg flex items-center justify-center">
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-cyan mx-auto mb-4" />
-          <p className="text-text-secondary">Loading...</p>
+          <div className="w-6 h-6 rounded-full border-2 border-line border-t-accent animate-spin mx-auto mb-3" />
+          <p className="text-xs text-ink-muted">Loading...</p>
         </div>
       </div>
     );
@@ -62,5 +57,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-// Made with Bob

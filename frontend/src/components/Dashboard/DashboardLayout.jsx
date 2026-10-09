@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import DashboardHeader from './DashboardHeader';
+import MeetingHeader from './MeetingHeader';
 import AudioUpload from '../Upload/AudioUpload';
 import TranscriptViewer from '../Transcript/TranscriptViewer';
 import SummaryCards from '../Summary/SummaryCards';
@@ -8,8 +8,8 @@ import AgentDAGVisualizer from '../AgentVisualizer/AgentDAGVisualizer';
 import OmiVoiceCapture from '../Omi/OmiVoiceCapture';
 import DecisionsPanel from '../Decisions/DecisionsPanel';
 import RisksPanel from '../Risks/RisksPanel';
+import ActionItemsPanel from '../ActionItems/ActionItemsPanel';
 import MemoryExplorerModal from '../Memory/MemoryExplorerModal';
-import CrossMeetingChat from '../Chatbot/CrossMeetingChat';
 import { 
   uploadMeetingAudio, 
   processMeetingTranscript, 
@@ -35,7 +35,6 @@ const DashboardLayout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [agentStates, setAgentStates] = useState({});
   const [isMemoryExplorerOpen, setIsMemoryExplorerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('insights'); // 'insights' | 'chat'
 
   // Connect to live Lyzr Agent Execution WebSocket stream
   useEffect(() => {
@@ -60,7 +59,6 @@ const DashboardLayout = () => {
 
   const handleProcessTranscript = async (transcriptText, title) => {
     setIsLoading(true);
-    // Reset agent states to trigger fresh visual DAG
     setAgentStates({});
     
     try {
@@ -69,12 +67,12 @@ const DashboardLayout = () => {
 
       setTranscript({
         id: meeting.id,
-        filename: title || 'Ambient Voice Session',
+        filename: title || 'Sprint Architecture & Infrastructure Sync',
         text: transcriptText,
-        duration: meeting.duration || 'N/A',
+        duration: meeting.duration || '42m 18s',
         wordCount: transcriptText.split(/\s+/).length,
         status: 'completed',
-        uploadDate: new Date().toISOString().split('T')[0]
+        uploadDate: new Date().toISOString()
       });
       setTranscriptId(meeting.id);
 
@@ -122,7 +120,7 @@ const DashboardLayout = () => {
         duration: meeting.duration || `${Math.round(transcription.duration || 0)}s`,
         wordCount: transcription.text.split(/\s+/).length,
         status: 'completed',
-        uploadDate: new Date().toISOString().split('T')[0]
+        uploadDate: new Date().toISOString()
       });
       setTranscriptId(meeting.id);
 
@@ -171,8 +169,8 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary-bg text-text-primary">
-      {/* Header */}
+    <div className="min-h-screen bg-canvas text-ink">
+      {/* 1. Header: sticky, surface background, 1px line border bottom */}
       <DashboardHeader
         transcript={transcript}
         summary={summary}
@@ -181,134 +179,65 @@ const DashboardLayout = () => {
         onOpenMemoryExplorer={() => setIsMemoryExplorerOpen(true)}
       />
 
-      <main className="max-w-[1920px] mx-auto px-6 sm:px-8 py-8">
-        <div className="flex flex-col gap-8 w-full">
-          
-          {/* SECTION 1: Omi Voice Capture & Ambient Ingestion */}
-          <motion.section
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="w-full"
-          >
-            <OmiVoiceCapture
-              onAudioUploaded={handleAudioUpload}
-              onTranscriptReady={handleProcessTranscript}
-              isProcessing={isLoading}
-            />
-          </motion.section>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* 2. Meeting Header: 28px serif title, metadata with dot separators, overlapping participant avatars */}
+        <MeetingHeader transcript={transcript} />
 
-          {/* SECTION 2: Lyzr Observable Multi-Agent DAG Visualizer */}
-          <motion.section
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="w-full"
-          >
-            <AgentDAGVisualizer
-              agentStates={agentStates}
-              isProcessing={isLoading}
-            />
-          </motion.section>
+        {/* 3. Capture bar: surface card with left accent bar (3px) */}
+        <OmiVoiceCapture
+          onAudioUploaded={handleAudioUpload}
+          onTranscriptReady={handleProcessTranscript}
+          isProcessing={isLoading}
+        />
 
-          {/* SECTION 3: Tab Navigation (Insights vs Cross-Meeting Memory Q&A) */}
-          <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-            <button
-              onClick={() => setActiveTab('insights')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'insights'
-                  ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Meeting Intelligence & Actions
-            </button>
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'chat'
-                  ? 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Cross-Meeting Memory Chatbot
-            </button>
+        {/* 4. Workspace: 8-col left, 4-col pipeline right. Below lg, pipeline moves above summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column (8 of 12 columns on lg): Summary, Decisions, Action items, Risks, Transcript, Upload */}
+          <div className="order-2 lg:order-1 lg:col-span-8 space-y-8 min-w-0">
+            {/* 1. Summary card */}
+            <SummaryCards
+              summary={summary}
+              isLoading={isLoading}
+            />
+
+            {/* 2. Decisions */}
+            <DecisionsPanel decisions={decisions} />
+
+            {/* 3. Action items */}
+            <ActionItemsPanel actionItems={actionItems} isLoading={isLoading} />
+
+            {/* 4. Risks & Blockers */}
+            <RisksPanel risks={risks} />
+
+            {/* Transcript Viewer */}
+            <TranscriptViewer
+              transcript={transcript}
+              isLoading={isLoading}
+            />
+
+            {/* Audio Upload */}
+            <AudioUpload
+              onFileUpload={(file) => handleAudioUpload(file, `Meeting: ${file.name}`)}
+            />
           </div>
 
-          {activeTab === 'chat' ? (
-            /* TAB: Cross-Meeting Conversational Chatbot */
-            <motion.section
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="w-full"
-            >
-              <CrossMeetingChat />
-            </motion.section>
-          ) : (
-            /* TAB: Meeting Intelligence Dashboard */
-            <>
-              {/* Row: Confirmed Decisions & Action Items */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
-                <DecisionsPanel decisions={decisions} />
-                <RisksPanel risks={risks} />
-              </div>
-
-              {/* AI Summary Cards (Executive Brief & Key Points) */}
-              <motion.section
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.2 }}
-                className="w-full"
-              >
-                <SummaryCards
-                  summary={summary}
-                  isLoading={isLoading}
-                />
-              </motion.section>
-
-              {/* Transcript Viewer with Search & Copy */}
-              <motion.section
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 }}
-                className="w-full"
-              >
-                <TranscriptViewer
-                  transcript={transcript}
-                  isLoading={isLoading}
-                />
-              </motion.section>
-
-              {/* Fallback File Drop Uploader */}
-              <motion.section
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.4 }}
-                className="w-full pt-4 border-t border-slate-800/80"
-              >
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Upload Recorded Audio File (Alternative to Live Voice)
-                </div>
-                <AudioUpload onFileUpload={(file) => handleAudioUpload(file, `Meeting: ${file.name}`)} />
-              </motion.section>
-            </>
-          )}
-
+          {/* Right Column (4 of 12 columns on lg): Agent pipeline, sticky on desktop */}
+          <div className="order-1 lg:order-2 lg:col-span-4 min-w-0">
+            <div className="lg:sticky lg:top-24">
+              <AgentDAGVisualizer
+                agentStates={agentStates}
+                isProcessing={isLoading}
+              />
+            </div>
+          </div>
         </div>
       </main>
 
-      {/* Qdrant Persistent Memory Explorer Modal */}
+      {/* Memory Explorer Modal */}
       <MemoryExplorerModal
         isOpen={isMemoryExplorerOpen}
         onClose={() => setIsMemoryExplorerOpen(false)}
       />
-
-      {/* Background Ambient Lighting */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl" />
-      </div>
     </div>
   );
 };

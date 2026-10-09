@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 const Button = ({ 
   children, 
   onClick, 
@@ -7,34 +5,36 @@ const Button = ({
   size = 'md', 
   disabled = false,
   icon: Icon,
-  className = ''
+  className = '',
+  type = 'button',
+  ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas';
   
   const variants = {
-    primary: 'bg-white text-primary-bg hover:bg-white/90',
-    secondary: 'bg-primary-surface text-text-primary border border-white/30 hover:border-white',
-    ghost: 'text-text-primary hover:bg-primary-surface',
-    danger: 'bg-status-error text-white hover:bg-status-error/80'
+    primary: 'bg-accent text-accent-ink hover:bg-accent-hover',
+    secondary: 'border border-line bg-surface hover:bg-raised text-ink',
+    ghost: 'text-ink hover:bg-raised',
+    danger: 'border border-rose/30 text-rose hover:bg-rose-soft',
   };
   
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg'
+    sm: 'px-2.5 py-1.5 text-xs',
+    md: 'px-3.5 py-2 text-sm',
+    lg: 'px-5 py-2.5 text-base'
   };
 
   return (
-    <motion.button
-      whileHover={{ scale: disabled ? 1 : 1.02 }}
-      whileTap={{ scale: disabled ? 1 : 0.98 }}
+    <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`${baseStyles} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
+      {...props}
     >
-      {Icon && <Icon className="w-5 h-5" />}
+      {Icon && <Icon className={size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} />}
       {children}
-    </motion.button>
+    </button>
   );
 };
 
