@@ -12,10 +12,21 @@ from config import settings
 class QdrantMemoryService:
     def __init__(self):
         self._write_lock = threading.Lock()
-        self.embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        self._embedding_model = None
         self.vector_dim = 384  # bge-small-en-v1.5 dimension
         self.collection_name = "meeting_memory"
         self.meetings_collection = "meetings_meta"
+
+    @property
+    def embedding_model(self):
+        """Lazy load embedding model so server starts and binds port instantly without waiting for download."""
+        if self._embedding_model is None:
+            with self._write_lock:
+                if self._embedding_model is None:
+                    print("[FastEmbed] Loading embedding model BAAI/bge-small-en-v1.5...")
+                    self._embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+                    print("[FastEmbed] Embedding model loaded successfully.")
+        return self._embedding_model
         
         # Initialize client
         if settings.QDRANT_URL == "local" or not settings.QDRANT_URL.startswith("http"):

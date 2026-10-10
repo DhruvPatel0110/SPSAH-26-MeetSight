@@ -35,6 +35,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    logger.info("MeetSight API started. Port bound successfully.")
+    import threading
+    threading.Thread(target=lambda: getattr(memory_service, "embedding_model", None), daemon=True).start()
+
 # Active WebSocket connections for agent observability stream
 active_websockets: List[WebSocket] = []
 
