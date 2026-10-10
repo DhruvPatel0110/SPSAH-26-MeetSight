@@ -10,6 +10,7 @@ import DecisionsPanel from '../Decisions/DecisionsPanel';
 import RisksPanel from '../Risks/RisksPanel';
 import ActionItemsPanel from '../ActionItems/ActionItemsPanel';
 import MemoryExplorerModal from '../Memory/MemoryExplorerModal';
+import ProcessingModal from '../UI/ProcessingModal';
 import { 
   uploadMeetingAudio, 
   processMeetingTranscript, 
@@ -33,6 +34,7 @@ const DashboardLayout = () => {
   const [decisions, setDecisions] = useState([]);
   const [risks, setRisks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [processingFileTitle, setProcessingFileTitle] = useState('Meeting Audio');
   const [agentStates, setAgentStates] = useState({});
   const [isMemoryExplorerOpen, setIsMemoryExplorerOpen] = useState(false);
 
@@ -58,6 +60,7 @@ const DashboardLayout = () => {
   }, []);
 
   const handleProcessTranscript = async (transcriptText, title) => {
+    setProcessingFileTitle(title || 'Sprint Architecture & Infrastructure Sync');
     setIsLoading(true);
     setAgentStates({});
     
@@ -105,6 +108,7 @@ const DashboardLayout = () => {
   };
 
   const handleAudioUpload = async (file, title) => {
+    setProcessingFileTitle(file?.name || title || 'Audio Recording');
     setIsLoading(true);
     setAgentStates({});
 
@@ -237,6 +241,12 @@ const DashboardLayout = () => {
       <MemoryExplorerModal
         isOpen={isMemoryExplorerOpen}
         onClose={() => setIsMemoryExplorerOpen(false)}
+      />
+
+      {/* 5-Agent Processing & Groq Rate Pacing Patience Modal */}
+      <ProcessingModal
+        isOpen={isLoading}
+        filename={processingFileTitle}
       />
     </div>
   );

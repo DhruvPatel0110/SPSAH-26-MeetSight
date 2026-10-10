@@ -79,45 +79,23 @@ If the retrieved context does not contain the answer, politely state what is kno
 
 class LyzrMultiAgentOrchestrator:
     def __init__(self):
-        # max_retries=0 prevents Groq SDK from sleeping for 30-40 seconds on 429 rate limit
-        self.groq_client = Groq(api_key=settings.GROQ_API_KEY, max_retries=0) if settings.GROQ_API_KEY else None
+        self.groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
         self.model_name = "openai/gpt-oss-20b"
-
-    def _call_gemini_fallback(self, system_prompt: str, user_content: str) -> Optional[str]:
-        """Fallback to Google Gemini 3.8 Flash if Groq exhausts token rate limits."""
-        if not settings.GEMINI_API_KEY:
-            logger.warning("[Gemini Fallback] GEMINI_API_KEY not configured in environment")
-            return None
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={settings.GEMINI_API_KEY}"
-            prompt = f"{system_prompt}\n\nInput Context:\n{user_content}"
-            payload = {"contents": [{"parts": [{"text": prompt}]}]}
-            with httpx.Client(timeout=25.0) as client:
-                res = client.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        return text.strip()
-                else:
-                    logger.warning(f"[Gemini Fallback] Non-200 status: {res.status_code} - {res.text[:100]}")
-        except Exception as e:
-            logger.warning(f"[Gemini Fallback] Exception: {e}")
-        return None
 
     def _call_llm(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> str:
         """
-        Execute LLM inference with Groq or instant fallback to Gemini on 429 rate limit.
-        Zero blocking delays to prevent Render/Vercel HTTP timeouts.
+        Execute LLM inference exclusively with Groq.
+        If Groq rate limits (429), parse the required cooldown period (e.g. 15-36s),
+        log it, wait out the cooldown, and retry until successful.
         """
-        if not self.groq_client and not settings.GEMINI_API_KEY:
-            raise ValueError("Neither GROQ_API_KEY nor GEMINI_API_KEY is configured")
+        if not self.groq_client:
+            raise ValueError("GROQ_API_KEY is not configured in backend/.env")
 
-        # 1. Try Groq Primary models
-        if self.groq_client:
-            models_to_try = [self.model_name, "openai/gpt-oss-120b"]
-            for model in models_to_try:
+        models_to_try = [self.model_name, "openai/gpt-oss-120b"]
+        last_error = None
+
+        for model in models_to_try:
+            for attempt in range(5):
                 try:
                     chat_completion = self.groq_client.chat.completions.create(
                         messages=[
@@ -130,20 +108,33 @@ class LyzrMultiAgentOrchestrator:
                     )
                     return chat_completion.choices[0].message.content.strip()
                 except Exception as e:
+                    last_error = e
                     err_msg = str(e).lower()
                     if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
-                        logger.info(f"[Groq 429] Rate limit reached. Instantly switching to Gemini 3.8 Flash...")
-                        gemini_res = self._call_gemini_fallback(system_prompt, user_content)
-                        if gemini_res:
-                            return gemini_res
-                    continue
+                        # Extract the exact cooldown seconds requested by Groq (default 36)
+                        wait_seconds = 36
+                        import re
+                        m = re.search(r"in (\d+(\.\d+)?)s", str(e))
+                        if m:
+                            try:
+                                wait_seconds = int(float(m.group(1))) + 2
+                            except Exception:
+                                wait_seconds = 36
+                        elif "retry in" in err_msg:
+                            m2 = re.search(r"retry in (\d+)", err_msg)
+                            if m2:
+                                wait_seconds = int(m2.group(1)) + 2
 
-        # 2. Try Gemini Fallback
-        gemini_res = self._call_gemini_fallback(system_prompt, user_content)
-        if gemini_res:
-            return gemini_res
+                        logger.warning(
+                            f"[Groq 429 Cooldown] Rate limit hit on model '{model}'. "
+                            f"Cooling down for {wait_seconds}s before retry (attempt {attempt + 1}/5)..."
+                        )
+                        time.sleep(wait_seconds)
+                        continue
+                    # For non-429 error, try next model
+                    break
 
-        raise RuntimeError("All LLM providers (Groq and Gemini) failed or rate-limited")
+        raise last_error or RuntimeError("Groq LLM processing failed after cooldown retries.")
 
     def _clean_json(self, response_text: str) -> Any:
         """Strip markdown codeblocks if present and parse JSON."""
@@ -210,14 +201,17 @@ class LyzrMultiAgentOrchestrator:
         await emit("summarizer", "Summarizer Agent", "completed", "Executive summary and topics generated successfully.", summary_data)
 
         # Token pacing buffer to prevent Groq 8k TPM saturation
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(2.0)
+
+        # For specialized agents, use a focused transcript window (up to 1500 words) to avoid exhausting Groq TPM
+        focused_transcript = " ".join(transcript.split()[:1500]) if len(transcript.split()) > 1500 else transcript
 
         # ---------------------------------------------------------------------
         # Step 3: Decision Agent
         # ---------------------------------------------------------------------
         await emit("decision_agent", "Decision Engine", "thinking", "Scanning for consensus triggers, architecture choices, and approved policies...")
         try:
-            decisions_raw = self._call_llm(DECISION_PROMPT, f"Transcript:\n{transcript}")
+            decisions_raw = self._call_llm(DECISION_PROMPT, f"Transcript:\n{focused_transcript}")
             decisions_data = self._clean_json(decisions_raw)
             if isinstance(decisions_data, dict) and "decisions" in decisions_data:
                 decisions_data = decisions_data["decisions"]
@@ -226,14 +220,14 @@ class LyzrMultiAgentOrchestrator:
         await emit("decision_agent", "Decision Engine", "completed", f"Extracted {len(decisions_data)} concrete decisions.", decisions_data)
 
         # Token pacing buffer
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(2.0)
 
         # ---------------------------------------------------------------------
         # Step 4: Action Item Agent
         # ---------------------------------------------------------------------
         await emit("action_agent", "Action Item Tracker", "thinking", "Extracting actionable commitments, assigning owners, and setting priorities...")
         try:
-            actions_raw = self._call_llm(ACTION_PROMPT, f"Transcript:\n{transcript}")
+            actions_raw = self._call_llm(ACTION_PROMPT, f"Transcript:\n{focused_transcript}")
             actions_data = self._clean_json(actions_raw)
             if isinstance(actions_data, dict) and "action_items" in actions_data:
                 actions_data = actions_data["action_items"]
@@ -242,14 +236,14 @@ class LyzrMultiAgentOrchestrator:
         await emit("action_agent", "Action Item Tracker", "completed", f"Identified {len(actions_data)} action items.", actions_data)
 
         # Token pacing buffer
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(2.0)
 
         # ---------------------------------------------------------------------
         # Step 5: Risk & Blocker Agent
         # ---------------------------------------------------------------------
         await emit("risk_agent", "Risk & Insight Analyzer", "thinking", "Detecting unresolved blockers, dependencies, and friction points...")
         try:
-            risks_raw = self._call_llm(RISK_PROMPT, f"Transcript:\n{transcript}")
+            risks_raw = self._call_llm(RISK_PROMPT, f"Transcript:\n{focused_transcript}")
             risks_data = self._clean_json(risks_raw)
             if isinstance(risks_data, dict) and "risks" in risks_data:
                 risks_data = risks_data["risks"]
