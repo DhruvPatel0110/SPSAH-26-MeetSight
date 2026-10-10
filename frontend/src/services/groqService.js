@@ -1,5 +1,5 @@
 // Groq API Service for Speech-to-Text using Whisper and Summarization
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GROQ_API_KEY = import.meta.env?.VITE_GROQ_API_KEY;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -21,7 +21,7 @@ export const transcribeAudio = async (audioFile) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
       throw new Error(error.error?.message || 'Transcription failed');
     }
 
@@ -43,6 +43,7 @@ export const transcribeAudio = async (audioFile) => {
 
 // Helper function to format duration
 export const formatDuration = (seconds) => {
+  if (typeof seconds !== 'number' || isNaN(seconds) || seconds < 0) return '0:00';
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -50,7 +51,10 @@ export const formatDuration = (seconds) => {
 
 // Helper function to count words
 export const countWords = (text) => {
-  return text.trim().split(/\s+/).length;
+  if (!text || typeof text !== 'string') return 0;
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
 };
 
 // Generate summary and action items using Groq's LLM
@@ -95,6 +99,7 @@ Use these icons: TrendingUp, ThumbsUp, Target, Users, Lightbulb, Sparkles
 Use these colors: cyan, purple, pink
 Use these priorities: high, medium, low`;
 
+    // Use supported model on this Groq tier
     const response = await fetch(GROQ_CHAT_URL, {
       method: 'POST',
       headers: {
@@ -102,7 +107,7 @@ Use these priorities: high, medium, low`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         messages: [
           {
             role: 'user',
@@ -111,11 +116,12 @@ Use these priorities: high, medium, low`;
         ],
         temperature: 0.7,
         max_tokens: 2048,
+        response_format: { type: 'json_object' }
       })
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
       throw new Error(error.error?.message || 'Summary generation failed');
     }
 
@@ -142,7 +148,7 @@ Use these priorities: high, medium, low`;
         {
           id: 1,
           title: "Transcription Complete",
-          description: "Audio has been successfully transcribed. Summary generation encountered an issue.",
+          description: "Audio has been successfully transcribed.",
           icon: "Sparkles",
           color: "cyan"
         }

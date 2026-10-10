@@ -1,6 +1,6 @@
 // Embedding Service using Gemini API for text embeddings
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const EMBEDDING_MODEL = 'text-embedding-004';
+const GEMINI_API_KEY = import.meta.env?.VITE_GEMINI_API_KEY;
+const EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${GEMINI_API_KEY}`;
 
 /**
@@ -25,7 +25,7 @@ export const generateEmbedding = async (text) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
       throw new Error(error.error?.message || 'Embedding generation failed');
     }
 
@@ -61,7 +61,7 @@ export const generateBatchEmbeddings = async (texts) => {
  * @returns {number} - Similarity score (0-1)
  */
 export const cosineSimilarity = (vecA, vecB) => {
-  if (vecA.length !== vecB.length) {
+  if (!vecA || !vecB || vecA.length !== vecB.length) {
     throw new Error('Vectors must have the same length');
   }
 
@@ -93,13 +93,16 @@ export const cosineSimilarity = (vecA, vecB) => {
  * @returns {string[]} - Array of text chunks
  */
 export const splitTextIntoChunks = (text, chunkSize = 1000, overlap = 200) => {
+  if (!text || typeof text !== 'string') return [];
   const chunks = [];
   let start = 0;
+  const safeOverlap = Math.max(0, Math.min(overlap, chunkSize - 1));
+  const step = Math.max(1, chunkSize - safeOverlap);
 
   while (start < text.length) {
     const end = Math.min(start + chunkSize, text.length);
     chunks.push(text.slice(start, end));
-    start += chunkSize - overlap;
+    start += step;
   }
 
   return chunks;
@@ -130,5 +133,3 @@ export const findRelevantChunks = async (query, chunks, topK = 3) => {
     throw error;
   }
 };
-
-// Made with Bob

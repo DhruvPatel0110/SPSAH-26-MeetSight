@@ -1,9 +1,9 @@
 // RAG (Retrieval-Augmented Generation) Service for Q&A from meeting transcripts
-import { generateEmbedding, splitTextIntoChunks, findRelevantChunks } from './embeddingService';
-import { getTranscript, updateTranscript } from './firestoreService';
+import { generateEmbedding, splitTextIntoChunks, findRelevantChunks } from './embeddingService.js';
+import { getTranscript, updateTranscript } from './firestoreService.js';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_KEY = import.meta.env?.VITE_GEMINI_API_KEY;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 /**
  * Process and index a transcript for RAG
@@ -144,7 +144,7 @@ Answer:`;
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
       throw new Error(error.error?.message || 'Failed to generate answer');
     }
 
@@ -191,15 +191,13 @@ export const isTranscriptIndexed = async (userId, transcriptId) => {
  * @returns {string} - Conversation summary
  */
 export const generateConversationSummary = (messages) => {
-  if (messages.length === 0) return 'New Conversation';
+  if (!messages || messages.length === 0) return 'New Conversation';
   
   const firstUserMessage = messages.find(m => m.role === 'user');
-  if (firstUserMessage) {
+  if (firstUserMessage && firstUserMessage.content) {
     const summary = firstUserMessage.content.substring(0, 50);
     return summary.length < firstUserMessage.content.length ? summary + '...' : summary;
   }
   
   return 'Conversation';
 };
-
-// Made with Bob

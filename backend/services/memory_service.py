@@ -1,5 +1,6 @@
 import os
 import uuid
+import threading
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from qdrant_client import QdrantClient
@@ -10,6 +11,7 @@ from config import settings
 
 class QdrantMemoryService:
     def __init__(self):
+        self._write_lock = threading.Lock()
         self.embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         self.vector_dim = 384  # bge-small-en-v1.5 dimension
         self.collection_name = "meeting_memory"
@@ -49,7 +51,7 @@ class QdrantMemoryService:
                 )
                 print(f"[Qdrant] Created collection: {self.collection_name}")
                 
-            # Meetings metadata collection (dummy vector of size 1 for key-value store, or standard payload)
+            # Meetings metadata collection
             if self.meetings_collection not in collections:
                 self.client.create_collection(
                     collection_name=self.meetings_collection,
@@ -73,6 +75,7 @@ class QdrantMemoryService:
     def store_meeting(self, meeting_data: Dict[str, Any]) -> str:
         """
         Store full meeting metadata, transcript chunks, decisions, and action items in Qdrant.
+        Thread-safe using write_lock to avoid SQLite/RocksDB transaction collisions in local mode.
         """
         meeting_id = meeting_data.get("id") or str(uuid.uuid4())
         title = meeting_data.get("title", f"Meeting - {datetime.now().strftime('%b %d, %Y')}")
@@ -90,29 +93,6 @@ class QdrantMemoryService:
             
         summary_emb = self.embed_texts([f"{title}. {summary_text}"])[0]
         
-        # Save to meetings_meta
-        self.client.upsert(
-            collection_name=self.meetings_collection,
-            points=[
-                models.PointStruct(
-                    id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"meta_{meeting_id}")),
-                    vector=summary_emb,
-                    payload={
-                        "meeting_id": meeting_id,
-                        "title": title,
-                        "date": date_str,
-                        "duration": meeting_data.get("duration", "N/A"),
-                        "participants": meeting_data.get("participants", []),
-                        "summary": summary,
-                        "decisions": decisions,
-                        "action_items": action_items,
-                        "risks": risks,
-                        "raw_transcript_preview": transcript[:1000] if transcript else ""
-                    }
-                )
-            ]
-        )
-
         points_to_insert = []
         texts_to_embed = []
         point_payloads = []
@@ -177,7 +157,6 @@ class QdrantMemoryService:
                     "text": risk_text
                 })
 
-        # Batch embed and write to Qdrant
         if texts_to_embed:
             vectors = self.embed_texts(texts_to_embed)
             for idx, (vec, payload) in enumerate(zip(vectors, point_payloads)):
@@ -190,11 +169,38 @@ class QdrantMemoryService:
                     )
                 )
 
+        # Acquire lock for thread-safe atomic disk upserts
+        with self._write_lock:
+            # Save to meetings_meta
             self.client.upsert(
-                collection_name=self.collection_name,
-                points=points_to_insert
+                collection_name=self.meetings_collection,
+                points=[
+                    models.PointStruct(
+                        id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"meta_{meeting_id}")),
+                        vector=summary_emb,
+                        payload={
+                            "meeting_id": meeting_id,
+                            "title": title,
+                            "date": date_str,
+                            "duration": meeting_data.get("duration", "N/A"),
+                            "participants": meeting_data.get("participants", []),
+                            "summary": summary,
+                            "decisions": decisions,
+                            "action_items": action_items,
+                            "risks": risks,
+                            "raw_transcript_preview": transcript[:1000] if transcript else ""
+                        }
+                    )
+                ]
             )
-            print(f"[Qdrant] Successfully stored {len(points_to_insert)} memory points for meeting '{title}'")
+
+            # Batch write memory points
+            if points_to_insert:
+                self.client.upsert(
+                    collection_name=self.collection_name,
+                    points=points_to_insert
+                )
+                print(f"[Qdrant] Successfully stored {len(points_to_insert)} memory points for meeting '{title}'")
 
         return meeting_id
 
@@ -262,8 +268,8 @@ class QdrantMemoryService:
                     "risks": payload.get("risks", []),
                     "preview": payload.get("raw_transcript_preview", "")
                 })
-            # Sort newest first
-            meetings.sort(key=lambda m: m.get("date", ""), reverse=True)
+            # Sort newest first, safely handling None values
+            meetings.sort(key=lambda m: m.get("date") or "", reverse=True)
             return meetings
         except Exception as e:
             print(f"[Qdrant] Error fetching meetings: {e}")
@@ -285,12 +291,13 @@ class QdrantMemoryService:
             
             sample_points = []
             for p in scroll_res[0]:
+                raw_text = p.payload.get("text") or ""
                 sample_points.append({
                     "id": str(p.id),
                     "category": p.payload.get("category", "chunk"),
                     "meeting_title": p.payload.get("meeting_title", "Unknown"),
                     "date": p.payload.get("date"),
-                    "text": p.payload.get("text", "")[:120] + "..." if len(p.payload.get("text", "")) > 120 else p.payload.get("text", ""),
+                    "text": raw_text[:120] + "..." if len(raw_text) > 120 else raw_text,
                     "full_payload": p.payload
                 })
 

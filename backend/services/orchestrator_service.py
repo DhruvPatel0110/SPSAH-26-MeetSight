@@ -1,4 +1,5 @@
 import json
+import time
 import asyncio
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Callable
@@ -12,9 +13,9 @@ Analyze the provided meeting transcript.
 Return a valid JSON object with:
 {
   "overview": "A 2-3 paragraph executive summary of the entire meeting",
-  "key_points": ["Key point 1", "Key point 2", "Key point 3", ...],
+  "key_points": ["Key point 1", "Key point 2", "Key point 3"],
   "sentiment": "Positive / Constructive / Urgent / Critical",
-  "topics": ["Topic 1", "Topic 2", ...]
+  "topics": ["Topic 1", "Topic 2"]
 }
 Output ONLY raw JSON with no markdown formatting or backticks."""
 
@@ -78,33 +79,38 @@ class LyzrMultiAgentOrchestrator:
         self.model_name = "openai/gpt-oss-20b"
 
     def _call_llm(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> str:
-        """Execute LLM inference with Groq or fallback."""
+        """
+        Execute LLM inference with Groq or fallback with rate-limit retry and backoff.
+        """
         if not self.groq_client:
             raise ValueError("GROQ_API_KEY is not configured in backend/.env")
-            
-        try:
-            chat_completion = self.groq_client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                model=self.model_name,
-                temperature=temperature,
-                response_format={"type": "json_object"} if "JSON" in system_prompt else None
-            )
-            return chat_completion.choices[0].message.content.strip()
-        except Exception:
-            fallback_model = "openai/gpt-oss-120b" if self.model_name != "openai/gpt-oss-120b" else "qwen/qwen3.8-27b"
-            chat_completion = self.groq_client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                model=fallback_model,
-                temperature=temperature,
-                response_format={"type": "json_object"} if "JSON" in system_prompt else None
-            )
-            return chat_completion.choices[0].message.content.strip()
+
+        models_to_try = [self.model_name, "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+        last_error = None
+
+        for model in models_to_try:
+            for attempt in range(3):
+                try:
+                    chat_completion = self.groq_client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ],
+                        model=model,
+                        temperature=temperature,
+                        response_format={"type": "json_object"} if "JSON" in system_prompt else None
+                    )
+                    return chat_completion.choices[0].message.content.strip()
+                except Exception as e:
+                    last_error = e
+                    err_msg = str(e).lower()
+                    if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
+                        # Back off on 429 rate limit
+                        time.sleep(1.2 * (attempt + 1))
+                        continue
+                    break  # If not a rate limit, try next model
+
+        raise last_error or RuntimeError("All LLM models failed")
 
     def _clean_json(self, response_text: str) -> Any:
         """Strip markdown codeblocks if present and parse JSON."""
@@ -122,10 +128,13 @@ class LyzrMultiAgentOrchestrator:
         self,
         transcript: str,
         title: Optional[str] = None,
+        duration: Optional[str] = "N/A",
+        participants: Optional[List[str]] = None,
         event_callback: Optional[Callable[[Dict[str, Any]], Any]] = None
     ) -> Dict[str, Any]:
         """
         Orchestrate the 5 specialized agents across the meeting transcript DAG with observable events.
+        Includes token pacing delays between agents to adhere to Groq's 8k TPM limit.
         """
         if not title:
             first_words = " ".join(transcript.split()[:6])
@@ -158,7 +167,7 @@ class LyzrMultiAgentOrchestrator:
         try:
             summary_raw = self._call_llm(SUMMARIZER_PROMPT, f"Transcript:\n{transcript}")
             summary_data = self._clean_json(summary_raw)
-        except Exception as e:
+        except Exception:
             summary_data = {
                 "overview": f"Summary generated from meeting transcript ({len(transcript.split())} words).",
                 "key_points": [transcript[:150] + "..."],
@@ -166,6 +175,9 @@ class LyzrMultiAgentOrchestrator:
                 "topics": ["General Discussion"]
             }
         await emit("summarizer", "Summarizer Agent", "completed", "Executive summary and topics generated successfully.", summary_data)
+
+        # Token pacing buffer to prevent Groq 8k TPM saturation
+        await asyncio.sleep(0.3)
 
         # ---------------------------------------------------------------------
         # Step 3: Decision Agent
@@ -176,9 +188,12 @@ class LyzrMultiAgentOrchestrator:
             decisions_data = self._clean_json(decisions_raw)
             if isinstance(decisions_data, dict) and "decisions" in decisions_data:
                 decisions_data = decisions_data["decisions"]
-        except Exception as e:
+        except Exception:
             decisions_data = []
         await emit("decision_agent", "Decision Engine", "completed", f"Extracted {len(decisions_data)} concrete decisions.", decisions_data)
+
+        # Token pacing buffer
+        await asyncio.sleep(0.3)
 
         # ---------------------------------------------------------------------
         # Step 4: Action Item Agent
@@ -189,9 +204,12 @@ class LyzrMultiAgentOrchestrator:
             actions_data = self._clean_json(actions_raw)
             if isinstance(actions_data, dict) and "action_items" in actions_data:
                 actions_data = actions_data["action_items"]
-        except Exception as e:
+        except Exception:
             actions_data = []
         await emit("action_agent", "Action Item Tracker", "completed", f"Identified {len(actions_data)} action items.", actions_data)
+
+        # Token pacing buffer
+        await asyncio.sleep(0.3)
 
         # ---------------------------------------------------------------------
         # Step 5: Risk & Blocker Agent
@@ -202,7 +220,7 @@ class LyzrMultiAgentOrchestrator:
             risks_data = self._clean_json(risks_raw)
             if isinstance(risks_data, dict) and "risks" in risks_data:
                 risks_data = risks_data["risks"]
-        except Exception as e:
+        except Exception:
             risks_data = []
         await emit("risk_agent", "Risk & Insight Analyzer", "completed", f"Identified {len(risks_data)} potential risks.", risks_data)
 
@@ -213,6 +231,8 @@ class LyzrMultiAgentOrchestrator:
         meeting_record = {
             "title": title,
             "date": datetime.now().isoformat(),
+            "duration": duration or "N/A",
+            "participants": participants or [],
             "transcript": transcript,
             "summary": summary_data,
             "decisions": decisions_data,
@@ -243,7 +263,7 @@ class LyzrMultiAgentOrchestrator:
         for i, pt in enumerate(retrieved_points):
             cat = pt.get("category", "chunk")
             title = pt.get("meeting_title", "Meeting")
-            date = pt.get("date", "Unknown date")[:10]
+            date = (pt.get("date") or "Unknown date")[:10]
             text = pt.get("text", "")
             context_str += f"\n[Doc {i+1} | {title} ({date}) | Type: {cat}]\n{text}\n"
             citations.append({
@@ -264,7 +284,15 @@ Retrieved Persistent Memory Context from Qdrant:
 
 Provide a comprehensive, authoritative response answering the user's question. Reference specific meetings and dates where relevant."""
 
-        response_text = self._call_llm(QA_SYSTEM_PROMPT, user_prompt, temperature=0.3)
+        try:
+            response_text = self._call_llm(QA_SYSTEM_PROMPT, user_prompt, temperature=0.3)
+        except Exception as e:
+            # Graceful synthesis fallback if rate limits or network issues occur
+            if citations:
+                bullet_pts = "\n".join([f"- {c['meeting_title']} ({c['date']}): {c['text_snippet']}" for c in citations[:3]])
+                response_text = f"Retrieved relevant notes from meeting memory:\n{bullet_pts}"
+            else:
+                response_text = "I could not find relevant meeting records in memory matching that query."
 
         return {
             "query": query,

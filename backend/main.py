@@ -38,7 +38,7 @@ async def broadcast_agent_event(event: Dict[str, Any]):
         return
     disconnected = []
     message = json.dumps(event)
-    for ws in active_websockets:
+    for ws in list(active_websockets):
         try:
             await ws.send_text(message)
         except Exception:
@@ -114,6 +114,8 @@ async def process_meeting(request: ProcessMeetingRequest):
         meeting_record = await orchestrator.execute_meeting_dag(
             transcript=request.transcript,
             title=request.title,
+            duration=request.duration or "N/A",
+            participants=request.participants or [],
             event_callback=broadcast_agent_event
         )
         return {"success": True, "meeting": meeting_record}
@@ -134,21 +136,25 @@ async def upload_audio(file: UploadFile = File(...), title: Optional[str] = Form
             raise HTTPException(status_code=400, detail=f"File size ({file_size_mb:.1f}MB) exceeds the 100MB maximum limit.")
 
         logger.info(f"Processing audio upload: '{file.filename}' ({file_size_mb:.2f} MB)")
-        transcription_result = omi_service.transcribe_audio_bytes(audio_bytes, filename=file.filename)
+        transcription_result = omi_service.transcribe_audio_bytes(audio_bytes, filename=file.filename or "audio.mp3")
         transcript = transcription_result.get("text", "")
         
         if not transcript.strip():
             raise HTTPException(status_code=400, detail="Audio file could not be transcribed or is silent.")
 
-        meeting_title = title if title else f"Meeting: {file.filename.rsplit('.', 1)[0]}"
+        file_name_clean = file.filename or "audio.mp3"
+        base_name = file_name_clean.rsplit('.', 1)[0] if '.' in file_name_clean else file_name_clean
+        meeting_title = title if title else f"Meeting: {base_name}"
+        duration_str = f"{int(transcription_result.get('duration') or 0)}s"
         
         meeting_record = await orchestrator.execute_meeting_dag(
             transcript=transcript,
             title=meeting_title,
+            duration=duration_str,
             event_callback=broadcast_agent_event
         )
         
-        meeting_record["duration"] = f"{int(transcription_result.get('duration') or 0)}s"
+        meeting_record["duration"] = duration_str
         meeting_record["language"] = transcription_result.get("language")
         
         return {

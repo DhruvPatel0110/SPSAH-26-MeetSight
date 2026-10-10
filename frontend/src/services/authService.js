@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from 'firebase/auth';
-import { auth, googleProvider, isFirebaseConfigured } from '../config/firebase';
+import { auth, googleProvider, isFirebaseConfigured } from '../config/firebase.js';
 
 // Sign in with Google
 export const signInWithGoogle = async () => {

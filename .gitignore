@@ -32,3 +32,9 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+
+# Test Outputs & Generated Exports
+*_results.json
+*test_results*.json
+transcript-*.*
+frontend/transcript-*.*

@@ -4,6 +4,7 @@ import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTranscriptHistory, deleteTranscript } from '../../services/firestoreService';
+import { getHistoricalMeetings } from '../../services/meetsightApi';
 
 const TranscriptHistory = ({ isOpen, onClose, onSelectTranscript }) => {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ const TranscriptHistory = ({ isOpen, onClose, onSelectTranscript }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (isOpen && user) {
+    if (isOpen) {
       loadTranscripts();
     }
   }, [isOpen, user]);
@@ -21,15 +22,48 @@ const TranscriptHistory = ({ isOpen, onClose, onSelectTranscript }) => {
     setLoading(true);
     setError(null);
 
-    const result = await getTranscriptHistory(user.uid, 20);
+    const userId = user?.uid || user?.id;
 
-    if (result.success) {
-      setTranscripts(result.data);
-    } else {
-      setError(result.error);
+    // Try Firestore first if user is logged in
+    if (userId) {
+      try {
+        const result = await getTranscriptHistory(userId, 20);
+        if (result.success && result.data && result.data.length > 0) {
+          setTranscripts(result.data);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn('Firestore history unavailable, trying Qdrant meeting memory:', e);
+      }
     }
 
-    setLoading(false);
+    // Fallback: Fetch from Qdrant Persistent Memory via FastAPI
+    try {
+      const beResult = await getHistoricalMeetings(50);
+      const meetings = (beResult?.meetings || []).map(m => ({
+        id: m.id,
+        filename: m.title || 'Meeting Session',
+        createdAt: m.date,
+        duration: m.duration || 'N/A',
+        wordCount: m.preview ? m.preview.split(/\s+/).length : 0,
+        text: m.preview || (m.summary?.overview || ''),
+        summary: {
+          keyPoints: m.summary?.key_points || [],
+          sentiment: m.summary?.sentiment || 'Constructive',
+          topics: m.summary?.topics || [],
+          overview: m.summary?.overview || ''
+        },
+        decisions: m.decisions || [],
+        actionItems: m.action_items || [],
+        risks: m.risks || []
+      }));
+      setTranscripts(meetings);
+    } catch (apiErr) {
+      setError(apiErr.message || 'Failed to load historical sessions');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (transcriptId) => {
@@ -37,13 +71,15 @@ const TranscriptHistory = ({ isOpen, onClose, onSelectTranscript }) => {
       return;
     }
 
-    const result = await deleteTranscript(user.uid, transcriptId);
-
-    if (result.success) {
-      setTranscripts(transcripts.filter(t => t.id !== transcriptId));
-    } else {
-      alert('Failed to delete transcript: ' + result.error);
+    const userId = user?.uid || user?.id;
+    if (userId) {
+      try {
+        await deleteTranscript(userId, transcriptId);
+      } catch {
+        // Ignored if local
+      }
     }
+    setTranscripts(transcripts.filter(t => t.id !== transcriptId));
   };
 
   const handleView = (transcript) => {
@@ -52,20 +88,24 @@ const TranscriptHistory = ({ isOpen, onClose, onSelectTranscript }) => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp) return 'Unknown date';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    if (!timestamp) return 'Recent';
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Recent';
+    }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Transcript History" size="lg">
       <div className="space-y-4">
         <div className="flex items-center justify-between text-xs text-ink-muted">
-          <span className="font-mono tabular-nums">{transcripts.length} saved sessions</span>
+          <span className="font-mono tabular-nums">{transcripts.length} indexed sessions</span>
         </div>
 
         {/* Content */}
@@ -113,7 +153,7 @@ const TranscriptHistory = ({ isOpen, onClose, onSelectTranscript }) => {
                         </span>
                       )}
                       
-                      {transcript.wordCount && (
+                      {transcript.wordCount > 0 && (
                         <span>
                           {transcript.wordCount} words
                         </span>

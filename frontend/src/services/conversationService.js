@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   arrayUnion,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db } from '../config/firebase.js';
 
 const CONVERSATIONS_COLLECTION = 'conversations';
 

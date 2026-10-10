@@ -13,7 +13,7 @@ import {
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '../config/firebase';
+import { db, isFirebaseConfigured } from '../config/firebase.js';
 
 // Helper to check if Firestore is available
 const checkFirestore = () => {

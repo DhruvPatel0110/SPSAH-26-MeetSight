@@ -1,5 +1,5 @@
 // Export helper functions for different file formats
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 export const exportAsText = (transcript, summary, actionItems) => {
   let content = `AI TRANSCRIPTION EXPORT
@@ -8,21 +8,30 @@ export const exportAsText = (transcript, summary, actionItems) => {
 `;
 
   if (transcript) {
+    const textContent = typeof transcript === 'string' ? transcript : (transcript.text || '');
     content += `TRANSCRIPT
 ----------
-${transcript.text}
+${textContent}
 
 `;
   }
 
   if (summary) {
+    const points = summary.keyPoints || summary.key_points || [];
+    const topics = Array.isArray(summary.topics) ? summary.topics.join(', ') : (summary.topics || 'N/A');
+    const sentiment = summary.sentiment || 'N/A';
+    const overview = summary.overview ? `Overview:\n${summary.overview}\n\n` : '';
+
     content += `SUMMARY
 -------
-Key Points:
-${summary.keyPoints.map((point, idx) => `${idx + 1}. ${point.title}: ${point.description}`).join('\n')}
+${overview}Key Points:
+${points.map((point, idx) => {
+  if (typeof point === 'string') return `${idx + 1}. ${point}`;
+  return `${idx + 1}. ${point.title || 'Key Point'}: ${point.description || ''}`;
+}).join('\n')}
 
-Topics: ${summary.topics.join(', ')}
-Sentiment: ${summary.sentiment}
+Topics: ${topics}
+Sentiment: ${sentiment}
 
 `;
   }
@@ -30,7 +39,14 @@ Sentiment: ${summary.sentiment}
   if (actionItems && actionItems.length > 0) {
     content += `ACTION ITEMS
 ------------
-${actionItems.map((item, idx) => `${idx + 1}. [${item.completed ? 'x' : ' '}] ${item.text} (Priority: ${item.priority}${item.dueDate ? `, Due: ${item.dueDate}` : ''})`).join('\n')}
+${actionItems.map((item, idx) => {
+  const task = item.task || item.text || item.title || 'Action item';
+  const priority = item.priority || 'medium';
+  const deadline = item.deadline || item.dueDate || item.due_date || '';
+  const assignee = item.assignee ? ` [Assignee: ${item.assignee}]` : '';
+  const isDone = Boolean(item.completed || item.status === 'completed' || item.status === 'done');
+  return `${idx + 1}. [${isDone ? 'x' : ' '}] ${task} (Priority: ${priority}${deadline ? `, Due: ${deadline}` : ''})${assignee}`;
+}).join('\n')}
 
 `;
   }
@@ -63,11 +79,13 @@ export const exportAsPDF = (transcript, summary, actionItems) => {
     doc.setFont('helvetica', isBold ? 'bold' : 'normal');
     
     // Sanitize text to remove problematic characters
-    const sanitizedText = text
+    const sanitizedText = String(text || '')
       .replace(/[^\x20-\x7E\n]/g, '') // Remove non-ASCII characters
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
     
+    if (!sanitizedText) return;
+
     const lines = doc.splitTextToSize(sanitizedText, maxWidth);
     
     lines.forEach(line => {
@@ -79,7 +97,7 @@ export const exportAsPDF = (transcript, summary, actionItems) => {
       yPosition += fontSize * 0.6;
     });
     
-    yPosition += 8; // Add spacing after text block
+    yPosition += 6; // Add spacing after text block
   };
 
   // Title Header
@@ -88,25 +106,42 @@ export const exportAsPDF = (transcript, summary, actionItems) => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('SUMMARY', margin, 22);
+  doc.text('MEETSIGHT SUMMARY', margin, 22);
   
   yPosition = 50;
   doc.setTextColor(0, 0, 0);
 
   // Summary Section
   if (summary) {
-    addText('Key Points:', 16, true);
+    addText('EXECUTIVE SUMMARY', 16, true);
     yPosition += 2;
+
+    if (summary.overview) {
+      addText(summary.overview, 11);
+      yPosition += 2;
+    }
+
+    const points = summary.keyPoints || summary.key_points || [];
+    if (points.length > 0) {
+      addText('Key Points:', 13, true);
+      points.forEach((point, idx) => {
+        if (typeof point === 'string') {
+          addText(`${idx + 1}. ${point}`, 11);
+        } else {
+          addText(`${idx + 1}. ${point.title || 'Discussion Point'}`, 12, true);
+          if (point.description) {
+            addText(`   ${point.description}`, 11);
+          }
+        }
+        yPosition += 2;
+      });
+    }
     
-    summary.keyPoints.forEach((point, idx) => {
-      addText(`${idx + 1}. ${point.title}`, 13, true);
-      addText(point.description, 11);
-      yPosition += 3;
-    });
-    
-    addText(`Topics: ${summary.topics.join(', ')}`, 11);
-    addText(`Sentiment: ${summary.sentiment.charAt(0).toUpperCase() + summary.sentiment.slice(1)}`, 11);
-    yPosition += 10;
+    const topics = Array.isArray(summary.topics) ? summary.topics.join(', ') : (summary.topics || 'General');
+    const sentiment = summary.sentiment || 'Constructive';
+    addText(`Topics: ${topics}`, 10);
+    addText(`Sentiment: ${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}`, 10);
+    yPosition += 8;
   }
 
   // Action Items Section
@@ -115,25 +150,31 @@ export const exportAsPDF = (transcript, summary, actionItems) => {
     yPosition += 2;
     
     actionItems.forEach((item, idx) => {
-      const status = item.completed ? 'Review' : 'Review';
+      const isDone = Boolean(item.completed || item.status === 'completed' || item.status === 'done');
+      const status = isDone ? '[DONE]' : '[PENDING]';
+      const task = item.task || item.text || item.title || 'Action item';
       const priority = item.priority ? item.priority.toUpperCase() : 'MEDIUM';
       const assignee = item.assignee || 'Team';
-      const dueDate = item.dueDate || '2026-05-24';
+      const dueDate = item.deadline || item.dueDate || item.due_date || 'Next sync';
       
-      addText(`${idx + 1}. ${status} the transcript for key points`, 11);
+      addText(`${idx + 1}. ${status} ${task}`, 11, true);
       addText(`   Priority: ${priority} | Assignee: ${assignee} | Due: ${dueDate}`, 10);
-      yPosition += 3;
+      yPosition += 2;
     });
+    yPosition += 8;
   }
 
   // Transcript Section (if needed)
-  if (transcript && transcript.text) {
-    if (yPosition > pageHeight - 100) {
-      doc.addPage();
-      yPosition = margin;
+  if (transcript) {
+    const textContent = typeof transcript === 'string' ? transcript : (transcript.text || '');
+    if (textContent) {
+      if (yPosition > pageHeight - 100) {
+        doc.addPage();
+        yPosition = margin;
+      }
+      addText('TRANSCRIPT', 16, true);
+      addText(textContent, 9);
     }
-    addText('TRANSCRIPT', 16, true);
-    addText(transcript.text, 10);
   }
 
   // Footer
@@ -142,7 +183,7 @@ export const exportAsPDF = (transcript, summary, actionItems) => {
     doc.setPage(i);
     doc.setFontSize(9);
     doc.setTextColor(128, 128, 128);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, pageHeight - 10);
+    doc.text(`Generated by MeetSight AI - ${new Date().toLocaleString()}`, margin, pageHeight - 10);
   }
 
   // Save the PDF
@@ -169,27 +210,37 @@ export const exportAsJSON = (transcript, summary, actionItems) => {
 };
 
 export const exportAsMarkdown = (transcript, summary, actionItems) => {
-  let content = `# MeetSight Export
+  let content = `# MeetSight Meeting Report
 
 `;
-
-  if (transcript) {
-    content += `## Transcript
-
-${transcript.text}
-
-`;
-  }
 
   if (summary) {
-    content += `## Summary
+    const points = summary.keyPoints || summary.key_points || [];
+    const topics = Array.isArray(summary.topics) ? summary.topics.join(', ') : (summary.topics || 'N/A');
+    const sentiment = summary.sentiment || 'Constructive';
 
-### Key Points
+    content += `## Executive Summary
 
-${summary.keyPoints.map((point, idx) => `${idx + 1}. **${point.title}**: ${point.description}`).join('\n\n')}
+`;
+    if (summary.overview) {
+      content += `${summary.overview}
 
-**Topics**: ${summary.topics.join(', ')}  
-**Sentiment**: ${summary.sentiment}
+`;
+    }
+
+    if (points.length > 0) {
+      content += `### Key Discussion Points
+
+${points.map((point, idx) => {
+  if (typeof point === 'string') return `${idx + 1}. ${point}`;
+  return `${idx + 1}. **${point.title || 'Discussion Point'}**: ${point.description || ''}`;
+}).join('\n\n')}
+
+`;
+    }
+
+    content += `**Topics**: ${topics}  
+**Sentiment**: ${sentiment}
 
 `;
   }
@@ -197,15 +248,32 @@ ${summary.keyPoints.map((point, idx) => `${idx + 1}. **${point.title}**: ${point
   if (actionItems && actionItems.length > 0) {
     content += `## Action Items
 
-${actionItems.map((item, idx) => `${idx + 1}. [${item.completed ? 'x' : ' '}] ${item.text}  
-   - **Priority**: ${item.priority}${item.assignee ? `  \n   - **Assignee**: ${item.assignee}` : ''}${item.dueDate ? `  \n   - **Due Date**: ${item.dueDate}` : ''}`).join('\n\n')}
+${actionItems.map((item, idx) => {
+  const isDone = Boolean(item.completed || item.status === 'completed' || item.status === 'done');
+  const task = item.task || item.text || item.title || 'Action item';
+  const priority = item.priority || 'medium';
+  const assignee = item.assignee ? `  \n   - **Assignee**: ${item.assignee}` : '';
+  const dueDate = (item.deadline || item.dueDate || item.due_date) ? `  \n   - **Due Date**: ${item.deadline || item.dueDate || item.due_date}` : '';
+  return `${idx + 1}. [${isDone ? 'x' : ' '}] **${task}**  
+   - **Priority**: ${priority}${assignee}${dueDate}`;
+}).join('\n\n')}
 
 `;
   }
 
-  content += `---
+  if (transcript) {
+    const textContent = typeof transcript === 'string' ? transcript : (transcript.text || '');
+    if (textContent) {
+      content += `## Transcript
 
-*Generated on: ${new Date().toLocaleString()}*`;
+${textContent}
+
+`;
+    }
+  }
+
+  content += `---
+*Generated by MeetSight AI on: ${new Date().toLocaleString()}*`;
 
   const blob = new Blob([content], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
