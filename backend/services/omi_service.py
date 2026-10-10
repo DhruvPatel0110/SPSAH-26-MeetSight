@@ -78,7 +78,7 @@ class OmiService:
             except Exception as direct_err:
                 err_str = str(direct_err).lower()
                 # If direct submission failed due to size or format, fall back to ffmpeg preprocessing
-                if ("413" in err_str or "too large" in err_str or "entity" in err_str) and shutil.which("ffmpeg"):
+                if ("413" in err_str or "too large" in err_str or "entity" in err_str):
                     logger.info("Direct transcription returned 413, falling back to ffmpeg audio processing.")
                     return self._preprocess_and_transcribe(audio_bytes, filename)
                 raise direct_err
@@ -90,8 +90,18 @@ class OmiService:
         """
         Compresses audio to 16kHz mono 48kbps MP3 (reducing size by 4x-10x),
         and chunks into 10-minute segments if it still exceeds 24MB.
+        Uses bundled imageio-ffmpeg if system ffmpeg is not installed.
         """
         ffmpeg_bin = shutil.which("ffmpeg")
+        if not ffmpeg_bin:
+            try:
+                import imageio_ffmpeg
+                ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+                logger.info(f"Using bundled ffmpeg from imageio_ffmpeg: {ffmpeg_bin}")
+            except Exception as e:
+                logger.warning(f"imageio_ffmpeg fallback unavailable: {e}")
+                ffmpeg_bin = None
+
         if not ffmpeg_bin:
             filesize_mb = len(audio_bytes) / (1024 * 1024)
             raise ValueError(
