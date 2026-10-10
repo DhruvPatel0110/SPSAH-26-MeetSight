@@ -16,7 +16,7 @@ GROQ_MAX_FILE_BYTES = 24 * 1024 * 1024  # 24MB threshold for safety
 
 class OmiService:
     def __init__(self):
-        self.groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+        self.groq_client = Groq(api_key=settings.GROQ_API_KEY, max_retries=0) if settings.GROQ_API_KEY else None
 
     def parse_omi_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

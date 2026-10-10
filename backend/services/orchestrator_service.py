@@ -79,12 +79,14 @@ If the retrieved context does not contain the answer, politely state what is kno
 
 class LyzrMultiAgentOrchestrator:
     def __init__(self):
-        self.groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+        # max_retries=0 prevents Groq SDK from sleeping for 30-40 seconds on 429 rate limit
+        self.groq_client = Groq(api_key=settings.GROQ_API_KEY, max_retries=0) if settings.GROQ_API_KEY else None
         self.model_name = "openai/gpt-oss-20b"
 
     def _call_gemini_fallback(self, system_prompt: str, user_content: str) -> Optional[str]:
         """Fallback to Google Gemini 3.8 Flash if Groq exhausts token rate limits."""
         if not settings.GEMINI_API_KEY:
+            logger.warning("[Gemini Fallback] GEMINI_API_KEY not configured in environment")
             return None
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={settings.GEMINI_API_KEY}"
@@ -98,13 +100,16 @@ class LyzrMultiAgentOrchestrator:
                     if candidates:
                         text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                         return text.strip()
+                else:
+                    logger.warning(f"[Gemini Fallback] Non-200 status: {res.status_code} - {res.text[:100]}")
         except Exception as e:
-            logger.warning(f"[Gemini Fallback] Failed: {e}")
+            logger.warning(f"[Gemini Fallback] Exception: {e}")
         return None
 
     def _call_llm(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> str:
         """
-        Execute LLM inference with Groq or fallback with rate-limit retry, backoff, and Gemini redundancy.
+        Execute LLM inference with Groq or instant fallback to Gemini on 429 rate limit.
+        Zero blocking delays to prevent Render/Vercel HTTP timeouts.
         """
         if not self.groq_client and not settings.GEMINI_API_KEY:
             raise ValueError("Neither GROQ_API_KEY nor GEMINI_API_KEY is configured")
@@ -113,28 +118,25 @@ class LyzrMultiAgentOrchestrator:
         if self.groq_client:
             models_to_try = [self.model_name, "openai/gpt-oss-120b"]
             for model in models_to_try:
-                for attempt in range(2):
-                    try:
-                        chat_completion = self.groq_client.chat.completions.create(
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_content}
-                            ],
-                            model=model,
-                            temperature=temperature,
-                            response_format={"type": "json_object"} if "JSON" in system_prompt else None
-                        )
-                        return chat_completion.choices[0].message.content.strip()
-                    except Exception as e:
-                        err_msg = str(e).lower()
-                        if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
-                            # If Groq rate limits, attempt Gemini fallback immediately
-                            gemini_res = self._call_gemini_fallback(system_prompt, user_content)
-                            if gemini_res:
-                                return gemini_res
-                            time.sleep(1.0 * (attempt + 1))
-                            continue
-                        break
+                try:
+                    chat_completion = self.groq_client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ],
+                        model=model,
+                        temperature=temperature,
+                        response_format={"type": "json_object"} if "JSON" in system_prompt else None
+                    )
+                    return chat_completion.choices[0].message.content.strip()
+                except Exception as e:
+                    err_msg = str(e).lower()
+                    if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
+                        logger.info(f"[Groq 429] Rate limit reached. Instantly switching to Gemini 3.8 Flash...")
+                        gemini_res = self._call_gemini_fallback(system_prompt, user_content)
+                        if gemini_res:
+                            return gemini_res
+                    continue
 
         # 2. Try Gemini Fallback
         gemini_res = self._call_gemini_fallback(system_prompt, user_content)
