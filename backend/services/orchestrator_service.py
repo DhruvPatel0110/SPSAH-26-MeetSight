@@ -1,11 +1,15 @@
 import json
 import time
 import asyncio
+import logging
+import httpx
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Callable
 from groq import Groq
 from config import settings
 from services.memory_service import memory_service
+
+logger = logging.getLogger("meetsight.orchestrator")
 
 # System Prompts for Specialized Agents
 SUMMARIZER_PROMPT = """You are the Executive Summarizer Agent in the MeetSight agentic system.
@@ -78,39 +82,66 @@ class LyzrMultiAgentOrchestrator:
         self.groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
         self.model_name = "openai/gpt-oss-20b"
 
+    def _call_gemini_fallback(self, system_prompt: str, user_content: str) -> Optional[str]:
+        """Fallback to Google Gemini 3.8 Flash if Groq exhausts token rate limits."""
+        if not settings.GEMINI_API_KEY:
+            return None
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={settings.GEMINI_API_KEY}"
+            prompt = f"{system_prompt}\n\nInput Context:\n{user_content}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            with httpx.Client(timeout=25.0) as client:
+                res = client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        return text.strip()
+        except Exception as e:
+            logger.warning(f"[Gemini Fallback] Failed: {e}")
+        return None
+
     def _call_llm(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> str:
         """
-        Execute LLM inference with Groq or fallback with rate-limit retry and backoff.
+        Execute LLM inference with Groq or fallback with rate-limit retry, backoff, and Gemini redundancy.
         """
-        if not self.groq_client:
-            raise ValueError("GROQ_API_KEY is not configured in backend/.env")
+        if not self.groq_client and not settings.GEMINI_API_KEY:
+            raise ValueError("Neither GROQ_API_KEY nor GEMINI_API_KEY is configured")
 
-        models_to_try = [self.model_name, "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
-        last_error = None
+        # 1. Try Groq Primary models
+        if self.groq_client:
+            models_to_try = [self.model_name, "openai/gpt-oss-120b"]
+            for model in models_to_try:
+                for attempt in range(2):
+                    try:
+                        chat_completion = self.groq_client.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_content}
+                            ],
+                            model=model,
+                            temperature=temperature,
+                            response_format={"type": "json_object"} if "JSON" in system_prompt else None
+                        )
+                        return chat_completion.choices[0].message.content.strip()
+                    except Exception as e:
+                        err_msg = str(e).lower()
+                        if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
+                            # If Groq rate limits, attempt Gemini fallback immediately
+                            gemini_res = self._call_gemini_fallback(system_prompt, user_content)
+                            if gemini_res:
+                                return gemini_res
+                            time.sleep(1.0 * (attempt + 1))
+                            continue
+                        break
 
-        for model in models_to_try:
-            for attempt in range(3):
-                try:
-                    chat_completion = self.groq_client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_content}
-                        ],
-                        model=model,
-                        temperature=temperature,
-                        response_format={"type": "json_object"} if "JSON" in system_prompt else None
-                    )
-                    return chat_completion.choices[0].message.content.strip()
-                except Exception as e:
-                    last_error = e
-                    err_msg = str(e).lower()
-                    if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
-                        # Back off on 429 rate limit
-                        time.sleep(1.2 * (attempt + 1))
-                        continue
-                    break  # If not a rate limit, try next model
+        # 2. Try Gemini Fallback
+        gemini_res = self._call_gemini_fallback(system_prompt, user_content)
+        if gemini_res:
+            return gemini_res
 
-        raise last_error or RuntimeError("All LLM models failed")
+        raise RuntimeError("All LLM providers (Groq and Gemini) failed or rate-limited")
 
     def _clean_json(self, response_text: str) -> Any:
         """Strip markdown codeblocks if present and parse JSON."""
