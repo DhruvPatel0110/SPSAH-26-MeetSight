@@ -12,7 +12,7 @@ class Settings:
     CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
     
     # Qdrant Settings
-    QDRANT_URL: str = os.getenv("QDRANT_URL", "local")
+    QDRANT_URL: str = os.getenv("QDRANT_URL") or os.getenv("QDRANT_CLUSTER_ENDPOINT") or "local"
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
     QDRANT_STORAGE_PATH: str = str(BASE_DIR / os.getenv("QDRANT_STORAGE_PATH", "qdrant_storage"))
     

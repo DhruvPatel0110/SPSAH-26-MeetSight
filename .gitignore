@@ -38,3 +38,6 @@ Thumbs.db
 *test_results*.json
 transcript-*.*
 frontend/transcript-*.*
+
+
+Qdrant_and_Omi_Workshop.ipynb
