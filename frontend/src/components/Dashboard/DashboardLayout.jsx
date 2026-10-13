@@ -12,6 +12,7 @@ import ActionItemsPanel from '../ActionItems/ActionItemsPanel';
 import MemoryExplorerModal from '../Memory/MemoryExplorerModal';
 import ProcessingModal from '../UI/ProcessingModal';
 import { 
+  transcribeAudioOnly,
   uploadMeetingAudio, 
   processMeetingTranscript, 
   subscribeToAgentStream 
@@ -113,16 +114,35 @@ const DashboardLayout = () => {
     setAgentStates({});
 
     try {
-      const result = await uploadMeetingAudio(file, title);
+      // Step 1: Transcribe audio only via Whisper (FFmpeg compression + Whisper STT)
+      // Keeps request duration under 25-35s, well within Render's 100s proxy timeout.
+      const transResult = await transcribeAudioOnly(file, title);
+      const transcriptText = transResult.transcript;
+      const meetingTitle = transResult.suggested_title || title || (file ? `Meeting: ${file.name}` : 'Meeting Audio');
+      const durationStr = transResult.duration ? `${Math.round(transResult.duration)}s` : 'N/A';
+
+      // Immediately display the transcript in UI while DAG kicks off
+      setTranscript({
+        id: 'transcribed-pending-dag',
+        filename: file?.name || meetingTitle,
+        text: transcriptText,
+        duration: durationStr,
+        wordCount: transcriptText.split(/\s+/).length,
+        status: 'analyzing',
+        uploadDate: new Date().toISOString()
+      });
+
+      // Step 2: Run 5-Agent DAG & Qdrant persistent indexing
+      // Executed as a separate request (20-30s), completely avoiding proxy timeouts.
+      const result = await processMeetingTranscript(transcriptText, meetingTitle, durationStr);
       const meeting = result.meeting;
-      const transcription = result.transcription;
 
       setTranscript({
         id: meeting.id,
-        filename: file.name,
-        text: transcription.text,
-        duration: meeting.duration || `${Math.round(transcription.duration || 0)}s`,
-        wordCount: transcription.text.split(/\s+/).length,
+        filename: file?.name || meetingTitle,
+        text: transcriptText,
+        duration: meeting.duration || durationStr,
+        wordCount: transcriptText.split(/\s+/).length,
         status: 'completed',
         uploadDate: new Date().toISOString()
       });

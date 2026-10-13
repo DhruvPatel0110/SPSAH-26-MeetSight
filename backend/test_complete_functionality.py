@@ -310,12 +310,23 @@ def test_6_fastapi_endpoints():
     assert r_stats.status_code == 200
     print(f"  [PASS] GET /api/memory/stats -> 200 OK (Total points: {r_stats.json().get('total_memory_points')})")
 
-    # 6. POST /api/audio/upload with valid WAV
-    print("  Testing POST /api/audio/upload with synthetic audio...")
+    # 6. POST /api/audio/transcribe (Two-Step Flow Step 1)
+    print("  Testing POST /api/audio/transcribe (Two-Step Flow Step 1)...")
     wav_bytes = generate_test_wav_bytes(duration_sec=1.5)
-    files = {"file": ("test_upload.wav", wav_bytes, "audio/wav")}
-    data = {"title": "Voice Upload Endpoint Test"}
-    r_upload = client.post("/api/audio/upload", files=files, data=data)
+    files = {"file": ("test_transcribe.wav", wav_bytes, "audio/wav")}
+    data = {"title": "Two-Step Transcribe Test"}
+    r_trans = client.post("/api/audio/transcribe", files=files, data=data)
+    assert r_trans.status_code == 200, f"FAIL: /api/audio/transcribe returned {r_trans.status_code}: {r_trans.text}"
+    trans_json = r_trans.json()
+    print(f"  [PASS] POST /api/audio/transcribe -> 200 OK (Transcript length: {len(trans_json.get('transcript', ''))}, suggested_title: {trans_json.get('suggested_title')})")
+    assert trans_json.get("success") is True
+    assert "transcript" in trans_json
+
+    # 7. POST /api/audio/upload with valid WAV (Legacy single-request endpoint)
+    print("  Testing POST /api/audio/upload with synthetic audio...")
+    files2 = {"file": ("test_upload.wav", wav_bytes, "audio/wav")}
+    data2 = {"title": "Voice Upload Endpoint Test"}
+    r_upload = client.post("/api/audio/upload", files=files2, data=data2)
     assert r_upload.status_code == 200, f"FAIL: Audio upload returned {r_upload.status_code}: {r_upload.text}"
     upload_json = r_upload.json()
     up_meeting = upload_json.get("meeting", {})

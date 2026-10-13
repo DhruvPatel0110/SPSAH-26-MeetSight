@@ -72,6 +72,17 @@ class QdrantMemoryService:
                     )
                 )
                 print(f"[Qdrant] Created collection: {self.meetings_collection}")
+
+            # Ensure payload indices exist for filtered query fields
+            for field in ["category", "meeting_id", "type"]:
+                try:
+                    self.client.create_payload_index(
+                        collection_name=self.collection_name,
+                        field_name=field,
+                        field_schema=models.PayloadSchemaType.KEYWORD
+                    )
+                except Exception:
+                    pass
                 
         except Exception as e:
             print(f"[Qdrant] Error initializing collections: {e}")

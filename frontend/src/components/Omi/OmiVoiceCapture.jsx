@@ -36,7 +36,8 @@ const OmiVoiceCapture = ({ onAudioUploaded, onTranscriptReady, isProcessing }) =
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
 
-  const webhookUrl = 'http://localhost:8000/api/omi/webhook';
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const webhookUrl = `${apiBase}/omi/webhook`;
 
   useEffect(() => {
     if (isRecording) {

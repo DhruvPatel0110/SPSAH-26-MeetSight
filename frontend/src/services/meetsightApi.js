@@ -17,15 +17,33 @@ export async function checkBackendHealth() {
   }
 }
 
-export async function processMeetingTranscript(transcript, title = null) {
+export async function processMeetingTranscript(transcript, title = null, duration = null) {
+  const payload = { transcript, title };
+  if (duration) payload.duration = duration;
   const res = await fetch(`${API_BASE}/process-meeting`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ transcript, title }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Failed to process meeting');
+  }
+  return await res.json();
+}
+
+export async function transcribeAudioOnly(file, title = null) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (title) formData.append('title', title);
+
+  const res = await fetch(`${API_BASE}/audio/transcribe`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Audio transcription failed');
   }
   return await res.json();
 }

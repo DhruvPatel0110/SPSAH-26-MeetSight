@@ -135,11 +135,51 @@ async def process_meeting(request: ProcessMeetingRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/audio/transcribe")
+async def transcribe_audio_only(file: UploadFile = File(...), title: Optional[str] = Form(None)):
+    """
+    Step 1 of 2: Transcribe audio via Groq Whisper Large V3 only (no agent DAG).
+    Returns raw transcript text so the frontend can immediately display it,
+    then call /api/process-meeting separately. This two-step flow keeps each
+    HTTP request well under Render's 100-second proxy timeout.
+    """
+    try:
+        audio_bytes = await file.read()
+        file_size_mb = len(audio_bytes) / (1024 * 1024)
+        if file_size_mb > 100.0:
+            raise HTTPException(status_code=400, detail=f"File size ({file_size_mb:.1f}MB) exceeds the 100MB maximum limit.")
+
+        logger.info(f"[Transcribe-Only] Processing: '{file.filename}' ({file_size_mb:.2f} MB)")
+        transcription_result = omi_service.transcribe_audio_bytes(audio_bytes, filename=file.filename or "audio.mp3")
+        transcript = transcription_result.get("text", "")
+
+        if not transcript.strip():
+            raise HTTPException(status_code=400, detail="Audio file could not be transcribed or is silent.")
+
+        file_name_clean = file.filename or "audio.mp3"
+        base_name = file_name_clean.rsplit('.', 1)[0] if '.' in file_name_clean else file_name_clean
+        suggested_title = title if title else f"Meeting: {base_name}"
+
+        return {
+            "success": True,
+            "transcript": transcript,
+            "duration": transcription_result.get("duration"),
+            "language": transcription_result.get("language", "en"),
+            "suggested_title": suggested_title
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Transcribe-Only] Error processing '{file.filename}': {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/audio/upload")
 async def upload_audio(file: UploadFile = File(...), title: Optional[str] = Form(None)):
     """
-    Transcribe audio recording via Whisper and automatically trigger the Lyzr agent DAG.
-    Supports audio files up to 100MB by automatically compressing/chunking for Groq Whisper.
+    Legacy single-request endpoint: Transcribe + run agent DAG in one call.
+    Kept for backwards compatibility. For large files on Render, use the
+    two-step flow: POST /api/audio/transcribe then POST /api/process-meeting.
     """
     try:
         audio_bytes = await file.read()
