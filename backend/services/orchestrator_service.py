@@ -90,7 +90,7 @@ class LyzrMultiAgentOrchestrator:
         if not self.groq_client:
             raise ValueError("GROQ_API_KEY is not configured in backend/.env")
 
-        models_to_try = [self.model_name, "openai/gpt-oss-120b"]
+        models_to_try = [self.model_name, "qwen/qwen3.8-27b"]
         last_error = None
 
         for model in models_to_try:
@@ -102,8 +102,7 @@ class LyzrMultiAgentOrchestrator:
                             {"role": "user", "content": user_content}
                         ],
                         model=model,
-                        temperature=temperature,
-                        response_format={"type": "json_object"} if "JSON" in system_prompt else None
+                        temperature=temperature
                     )
                     return chat_completion.choices[0].message.content.strip()
                 except Exception as e:

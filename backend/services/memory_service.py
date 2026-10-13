@@ -119,12 +119,23 @@ class QdrantMemoryService:
         texts_to_embed = []
         point_payloads = []
 
-        # 2. Index transcript in 3-sentence chunks
+        # 2. Index representative transcript chunks (up to 8 evenly spaced chunks to prevent OOM / 502 on Render)
         if transcript:
             sentences = [s.strip() for s in transcript.replace("\n", " ").split(".") if len(s.strip()) > 15]
-            chunk_size = 3
+            chunk_size = 4
+            all_chunks = []
             for i in range(0, len(sentences), chunk_size):
                 chunk = ". ".join(sentences[i:i + chunk_size]) + "."
+                all_chunks.append(chunk)
+
+            # Sample up to 8 chunks evenly across the meeting (start, middle, conclusion)
+            if len(all_chunks) > 8:
+                step = len(all_chunks) / 8
+                selected_chunks = [all_chunks[int(i * step)] for i in range(8)]
+            else:
+                selected_chunks = all_chunks
+
+            for idx, chunk in enumerate(selected_chunks):
                 texts_to_embed.append(chunk)
                 point_payloads.append({
                     "meeting_id": meeting_id,
@@ -132,7 +143,7 @@ class QdrantMemoryService:
                     "date": date_str,
                     "category": "transcript_chunk",
                     "text": chunk,
-                    "chunk_index": i // chunk_size
+                    "chunk_index": idx
                 })
 
         # 3. Index decisions
