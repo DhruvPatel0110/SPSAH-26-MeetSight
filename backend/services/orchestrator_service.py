@@ -79,14 +79,13 @@ If the retrieved context does not contain the answer, politely state what is kno
 
 class LyzrMultiAgentOrchestrator:
     def __init__(self):
-        self.groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+        self.groq_client = Groq(api_key=settings.GROQ_API_KEY, max_retries=1) if settings.GROQ_API_KEY else None
         self.model_name = "openai/gpt-oss-20b"
 
     def _call_llm(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> str:
         """
-        Execute LLM inference exclusively with Groq.
-        If Groq rate limits (429), parse the required cooldown period (e.g. 15-36s),
-        log it, wait out the cooldown, and retry until successful.
+        Execute LLM inference with Groq.
+        Keeps retries bounded so requests never exceed proxy limits (max 8s backoff).
         """
         if not self.groq_client:
             raise ValueError("GROQ_API_KEY is not configured in backend/.env")
@@ -95,7 +94,7 @@ class LyzrMultiAgentOrchestrator:
         last_error = None
 
         for model in models_to_try:
-            for attempt in range(5):
+            for attempt in range(2):
                 try:
                     chat_completion = self.groq_client.chat.completions.create(
                         messages=[
@@ -111,30 +110,24 @@ class LyzrMultiAgentOrchestrator:
                     last_error = e
                     err_msg = str(e).lower()
                     if "429" in err_msg or "rate" in err_msg or "tpm" in err_msg:
-                        # Extract the exact cooldown seconds requested by Groq (default 36)
-                        wait_seconds = 36
+                        wait_seconds = 4
                         import re
                         m = re.search(r"in (\d+(\.\d+)?)s", str(e))
                         if m:
                             try:
-                                wait_seconds = int(float(m.group(1))) + 2
+                                wait_seconds = min(8, int(float(m.group(1))) + 1)
                             except Exception:
-                                wait_seconds = 36
-                        elif "retry in" in err_msg:
-                            m2 = re.search(r"retry in (\d+)", err_msg)
-                            if m2:
-                                wait_seconds = int(m2.group(1)) + 2
-
+                                wait_seconds = 4
                         logger.warning(
                             f"[Groq 429 Cooldown] Rate limit hit on model '{model}'. "
-                            f"Cooling down for {wait_seconds}s before retry (attempt {attempt + 1}/5)..."
+                            f"Waiting {wait_seconds}s before retry (attempt {attempt + 1}/2)..."
                         )
                         time.sleep(wait_seconds)
                         continue
                     # For non-429 error, try next model
                     break
 
-        raise last_error or RuntimeError("Groq LLM processing failed after cooldown retries.")
+        raise last_error or RuntimeError("Groq LLM processing failed.")
 
     def _clean_json(self, response_text: str) -> Any:
         """Strip markdown codeblocks if present and parse JSON."""
@@ -188,8 +181,10 @@ class LyzrMultiAgentOrchestrator:
         # Step 2: Summarizer Agent
         # ---------------------------------------------------------------------
         await emit("summarizer", "Summarizer Agent", "thinking", "Synthesizing executive brief, identifying pillars, and measuring tone...")
+        # For summarizer agent, cap to 2500 words to avoid Groq TPM saturation on large meeting transcripts
+        summary_transcript = " ".join(transcript.split()[:2500]) if len(transcript.split()) > 2500 else transcript
         try:
-            summary_raw = self._call_llm(SUMMARIZER_PROMPT, f"Transcript:\n{transcript}")
+            summary_raw = self._call_llm(SUMMARIZER_PROMPT, f"Transcript:\n{summary_transcript}")
             summary_data = self._clean_json(summary_raw)
         except Exception:
             summary_data = {
@@ -203,8 +198,8 @@ class LyzrMultiAgentOrchestrator:
         # Token pacing buffer to prevent Groq 8k TPM saturation
         await asyncio.sleep(2.0)
 
-        # For specialized agents, use a focused transcript window (up to 1500 words) to avoid exhausting Groq TPM
-        focused_transcript = " ".join(transcript.split()[:1500]) if len(transcript.split()) > 1500 else transcript
+        # For specialized agents, use a focused transcript window (up to 1200 words) to avoid exhausting Groq TPM
+        focused_transcript = " ".join(transcript.split()[:1200]) if len(transcript.split()) > 1200 else transcript
 
         # ---------------------------------------------------------------------
         # Step 3: Decision Agent
